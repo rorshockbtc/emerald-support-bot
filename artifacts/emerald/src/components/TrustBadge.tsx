@@ -70,13 +70,13 @@ export function TrustBadge({ score, ciBreakdown, sourceUrl, lastUpdated }: Trust
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 top-full mt-2 w-72 bg-card border border-white/10 rounded-xl shadow-xl shadow-black/50 p-4 z-50 overflow-hidden"
+            className="absolute left-0 top-full mt-2 w-72 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl shadow-xl shadow-black/50 p-4 z-50 overflow-hidden"
           >
             {/* Glossy top edge highlight */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             
-            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-primary" />
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
               Sovereign Trust Ribbon
             </h4>
             
@@ -93,7 +93,7 @@ export function TrustBadge({ score, ciBreakdown, sourceUrl, lastUpdated }: Trust
                   <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold block">Source</span>
-                    <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs truncate block max-w-[200px]">
+                    <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline text-xs truncate block max-w-[200px]">
                       {sourceUrl}
                     </a>
                   </div>
@@ -116,7 +116,7 @@ export function TrustBadge({ score, ciBreakdown, sourceUrl, lastUpdated }: Trust
             <div className="mt-4 pt-3 border-t border-border flex justify-between items-center">
               <button 
                 onClick={handleImproveClick}
-                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors"
               >
                 Improve This Model
               </button>

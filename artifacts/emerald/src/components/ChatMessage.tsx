@@ -17,6 +17,7 @@ export interface MessageProps {
   lastUpdated?: string;
   isFinancialAdvice?: boolean;
   relatedArticles?: Article[];
+  compact?: boolean;
 }
 
 export function ChatMessage({ 
@@ -28,7 +29,8 @@ export function ChatMessage({
   sources, 
   lastUpdated, 
   isFinancialAdvice,
-  relatedArticles
+  relatedArticles,
+  compact = false,
 }: MessageProps) {
   const isBot = role === 'bot';
   const { toast } = useToast();
@@ -49,15 +51,16 @@ export function ChatMessage({
         isBot ? "justify-start" : "justify-end"
       )}
     >
-      {/* Bot Avatar */}
       {isBot && (
-        <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-1 shadow-lg shadow-primary/10">
-          <Bot className="w-5 h-5 text-primary" />
+        <div className={cn(
+          "rounded-full bg-emerald-600/20 border border-emerald-600/30 flex items-center justify-center shrink-0 mt-0.5",
+          compact ? "w-7 h-7" : "w-8 h-8"
+        )}>
+          <Bot className={cn("text-emerald-400", compact ? "w-4 h-4" : "w-5 h-5")} />
         </div>
       )}
 
-      <div className={cn("flex flex-col gap-1 max-w-[85%] md:max-w-[75%]", isBot ? "items-start" : "items-end")}>
-        {/* Compliance Banner */}
+      <div className={cn("flex flex-col gap-1", compact ? "max-w-[85%]" : "max-w-[85%] md:max-w-[75%]", isBot ? "items-start" : "items-end")}>
         {isBot && isFinancialAdvice && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-warning bg-warning/10 px-2 py-1 rounded-md border border-warning/20 mb-1">
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -65,21 +68,16 @@ export function ChatMessage({
           </div>
         )}
 
-        {/* Message Bubble */}
         <div 
           className={cn(
-            "px-4 py-3 text-sm md:text-base shadow-sm relative",
+            "shadow-sm relative",
+            compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-sm md:text-base",
             isBot 
-              ? "bg-card border border-white/5 rounded-2xl rounded-tl-sm text-foreground/90" 
-              : "bg-secondary border border-white/10 rounded-2xl rounded-tr-sm text-foreground"
+              ? "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl rounded-tl-sm" 
+              : "bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-2xl rounded-tr-sm"
           )}
         >
-          {/* Subtle gradient highlight on user message */}
-          {!isBot && (
-            <div className="absolute inset-0 rounded-inherit bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-          )}
-          
-          <div className="whitespace-pre-wrap leading-relaxed relative z-10">{content}</div>
+          <div className="whitespace-pre-wrap leading-relaxed">{content}</div>
         </div>
 
         {/* Metadata & Actions */}
@@ -104,24 +102,24 @@ export function ChatMessage({
             {relatedArticles.map((article) => (
               <div 
                 key={article.id}
-                className="bg-card/50 border border-white/5 rounded-xl p-3 hover:border-primary/30 transition-colors group/card cursor-pointer"
+                className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] rounded-xl p-3 hover:border-emerald-500/30 transition-colors group/card cursor-pointer"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 p-1.5 bg-primary/10 rounded-md text-primary">
+                    <div className="mt-0.5 p-1.5 bg-emerald-600/10 rounded-md text-emerald-400">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold group-hover/card:text-primary transition-colors">{article.title}</h4>
+                      <h4 className="text-sm font-semibold group-hover/card:text-emerald-400 transition-colors">{article.title}</h4>
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{article.description}</p>
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-center">
+                <div className="mt-3 pt-3 border-t border-[hsl(var(--border))] flex justify-between items-center">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{article.category}</span>
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleRequestUpdate(); }}
-                    className="text-xs text-muted-foreground hover:text-accent transition-colors"
+                    className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors"
                   >
                     Request Update
                   </button>
@@ -132,10 +130,12 @@ export function ChatMessage({
         )}
       </div>
 
-      {/* User Avatar */}
       {!isBot && (
-        <div className="w-8 h-8 rounded-lg bg-secondary border border-white/10 flex items-center justify-center shrink-0 mt-1">
-          <User className="w-4 h-4 text-muted-foreground" />
+        <div className={cn(
+          "rounded-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center shrink-0 mt-0.5",
+          compact ? "w-7 h-7" : "w-8 h-8"
+        )}>
+          <User className={cn("text-[hsl(var(--muted-foreground))]", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
         </div>
       )}
     </motion.div>

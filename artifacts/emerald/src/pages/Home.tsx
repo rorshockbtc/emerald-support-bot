@@ -1,291 +1,244 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, Send, AlertOctagon, PhoneCall, Bot, Loader2 } from 'lucide-react';
+import React from 'react';
+import { ShieldAlert, Lock, KeyRound, Smartphone, AlertTriangle, ChevronRight, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ChatWidget } from '@/components/ChatWidget';
 
-function uuidv4() {
-  return crypto.randomUUID();
-}
-import { motion, AnimatePresence } from 'framer-motion';
-
-import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
-import { Button } from '@/components/ui/button';
-import { ChatMessage, type MessageProps } from '@/components/ChatMessage';
-import { SecurityPanel } from '@/components/SecurityPanel';
-import { useToast } from '@/hooks/use-toast';
+const sidebarLinks = [
+  { label: "Unauthorized login activity", active: true },
+  { label: "Recover a lost wallet" },
+  { label: "Enable 2FA on your account" },
+  { label: "Fix issues connecting Jade via USB" },
+  { label: "Fix issues pairing Jade via Bluetooth" },
+  { label: "Perform a factory reset" },
+];
 
 export default function Home() {
-  const [sessionId] = useState(() => uuidv4());
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<MessageProps[]>([
-    {
-      id: uuidv4(),
-      role: 'bot',
-      content: "Hi there. I'm Emerald, Blockstream's advanced support assistant. How can I help secure your account or answer your technical questions today?",
-      timestamp: new Date(),
-      trustScore: 0.99,
-      ciBreakdown: "System initialization verified.",
-    }
-  ]);
-  
-  const [showSecurityPanel, setShowSecurityPanel] = useState(false);
-  const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-
-  const chatMutation = useSendMessage();
-  const escalateMutation = useEscalateTicket();
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, chatMutation.isPending]);
-
-  const handleSend = async () => {
-    if (!input.trim() || chatMutation.isPending) return;
-
-    const userText = input.trim();
-    setInput('');
-    
-    // Add user message to UI immediately
-    const userMsg: MessageProps = {
-      id: uuidv4(),
-      role: 'user',
-      content: userText,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMsg]);
-
-    try {
-      const response = await chatMutation.mutateAsync({
-        data: { message: userText, sessionId }
-      });
-
-      // Update global security state if alert detected
-      if (response.isSecurityAlert) {
-        setHasSecurityAlertSession(true);
-      }
-
-      // Add bot response
-      const botMsg: MessageProps = {
-        id: uuidv4(),
-        role: 'bot',
-        content: response.reply,
-        timestamp: new Date(),
-        trustScore: response.trustScore,
-        ciBreakdown: response.ciBreakdown,
-        sources: response.sources,
-        lastUpdated: response.lastUpdated,
-        isFinancialAdvice: response.isFinancialAdvice,
-        relatedArticles: response.relatedArticles,
-      };
-      
-      setMessages(prev => [...prev, botMsg]);
-
-    } catch (error) {
-      toast({
-        title: "Connection Error",
-        description: "Failed to reach Emerald. Please try again.",
-        variant: "destructive"
-      });
-      // Remove the optimistic user message on failure or keep it? Usually better to keep it and show error inline, but simple error toast works for MVP.
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleEscalate = async () => {
-    try {
-      // Map local messages to API format
-      const history = messages.map(m => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp.toISOString()
-      }));
-
-      const res = await escalateMutation.mutateAsync({
-        data: {
-          sessionId,
-          subject: hasSecurityAlertSession ? "URGENT: Possible Account Compromise" : "General Support Escalation",
-          chatHistory: history
-        }
-      });
-
-      if (res.success) {
-        console.log("[Zendesk Export Payload]:", JSON.stringify(res.ticketPayload, null, 2));
-        toast({
-          title: "Ticket Escalated",
-          description: "A human agent has been notified and will review your session shortly.",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Escalation Failed",
-        description: "Could not create support ticket. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background relative selection:bg-primary/30">
-      {/* Background aesthetics */}
-      <img 
-        src={`${import.meta.env.BASE_URL}images/blockstream-bg.png`} 
-        alt="Background" 
-        className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none mix-blend-screen"
-      />
-      <img 
-        src={`${import.meta.env.BASE_URL}images/grain.png`} 
-        alt="Texture" 
-        className="texture-overlay"
-      />
-      <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
-      
-      {/* Radial gradient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/10 blur-[120px] rounded-full pointer-events-none opacity-50" />
-
-      {/* Main Chat Container */}
-      <div className="relative flex flex-col w-full max-w-4xl mx-auto h-full z-10 border-x border-white/5 glass-panel shadow-2xl">
-        
-        {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-background/80 backdrop-blur-xl shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white rounded flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                {/* Simplified Blockstream-esque geometric logo placeholder */}
-                <div className="w-4 h-4 border-[2px] border-background border-t-transparent rounded-sm transform rotate-45" />
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="font-display font-bold text-lg text-foreground tracking-tight">Blockstream</span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Help Center</span>
+    <div className="min-h-screen bg-white text-foreground flex flex-col">
+      <nav className="bg-[#111316] text-white sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                  <circle cx="16" cy="16" r="15" stroke="#10B981" strokeWidth="2" />
+                  <path d="M10 16.5L14.5 21L23 11" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
+                <span className="font-bold text-lg tracking-tight">Blockstream</span>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-white/10">
-              <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded text-xs font-bold font-mono tracking-wider">
-                EMERALD
-              </span>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-semibold tracking-wide cursor-default group relative">
-                <ShieldCheck className="w-3 h-3" />
-                <span>Privacy Protected</span>
-                
-                {/* Tooltip */}
-                <div className="absolute top-full left-0 mt-2 w-48 p-2 bg-popover border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-xs text-foreground/80 font-normal normal-case">
-                  Local scrubbing is active. Sensitive PII is redacted before leaving your device.
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleEscalate}
-            disabled={escalateMutation.isPending}
-            className="border-white/10 hover:border-white/20 hover:bg-white/5"
-          >
-            {escalateMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <PhoneCall className="w-4 h-4 mr-2 text-muted-foreground" />
-            )}
-            Escalate to Human
-          </Button>
-        </header>
-
-        {/* Global Security Triage Banner */}
-        <AnimatePresence>
-          {hasSecurityAlertSession && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              className="bg-destructive border-b border-red-500/50 shadow-[0_4px_20px_rgba(220,38,38,0.2)] overflow-hidden shrink-0 z-20"
-            >
-              <div className="px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 text-white">
-                  <AlertOctagon className="w-5 h-5 animate-pulse" />
-                  <span className="font-semibold text-sm">Potential Account Compromise Detected</span>
-                </div>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => setShowSecurityPanel(true)}
-                  className="w-full sm:w-auto bg-white text-destructive hover:bg-white/90 font-bold"
-                >
-                  Secure My Account Now
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth">
-          <div className="max-w-3xl mx-auto">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} {...msg} />
-            ))}
-            
-            {/* Loading State */}
-            {chatMutation.isPending && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex w-full gap-4 mb-6 justify-start"
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-1">
-                  <Bot className="w-5 h-5 text-primary/50 animate-pulse" />
-                </div>
-                <div className="px-5 py-4 bg-card border border-white/5 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </motion.div>
-            )}
-            <div ref={messagesEndRef} className="h-4" />
-          </div>
-        </div>
-
-        {/* Input Area */}
-        <div className="p-4 sm:p-6 bg-background/80 backdrop-blur-xl border-t border-white/10 shrink-0">
-          <div className="max-w-3xl mx-auto relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/30 to-accent/30 rounded-2xl blur opacity-20 group-focus-within:opacity-50 transition duration-500" />
-            <div className="relative flex items-end gap-2 bg-input border border-white/10 rounded-2xl p-2 shadow-inner">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Describe your issue..."
-                className="w-full max-h-32 min-h-[44px] bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-foreground px-3 py-2.5 text-sm md:text-base placeholder:text-muted-foreground/60"
-                rows={1}
-              />
-              <Button 
-                onClick={handleSend}
-                disabled={!input.trim() || chatMutation.isPending}
-                size="icon"
-                className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground h-[44px] w-[44px]"
-              >
-                <Send className="w-5 h-5 ml-0.5" />
-              </Button>
-            </div>
-            <div className="text-center mt-3 text-[10px] text-muted-foreground/60 font-medium tracking-wide">
-              Emerald is an AI assistant. Verify critical information.
+            <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+              <a href="https://blockstream.com/products" className="hover:text-white transition-colors">Products</a>
+              <a href="https://blockstream.com/newsroom" className="hover:text-white transition-colors">Newsroom</a>
+              <a href="https://blockstream.com/developers" className="hover:text-white transition-colors">Developers</a>
+              <a href="https://blockstream.com/company" className="hover:text-white transition-colors">Company</a>
+              <a href="https://store.blockstream.com" className="hover:text-white transition-colors">Store</a>
+              <a href="https://help.blockstream.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">Support</a>
             </div>
           </div>
         </div>
+      </nav>
 
+      <div className="border-b border-gray-200 bg-gray-50/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <a href="https://help.blockstream.com" className="text-emerald-600 hover:text-emerald-700 transition-colors">Blockstream Help Center</a>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <a href="#" className="text-emerald-600 hover:text-emerald-700 transition-colors">Account Security</a>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-muted-foreground">Unauthorized login activity</span>
+          </div>
+        </div>
       </div>
 
-      {/* Slide-in Security Walkthrough */}
-      <SecurityPanel 
-        isOpen={showSecurityPanel} 
-        onClose={() => setShowSecurityPanel(false)} 
-      />
+      <div className="flex-1">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex gap-12">
+            <aside className="hidden lg:block w-64 shrink-0">
+              <h3 className="text-sm font-bold text-foreground mb-4 uppercase tracking-wider">Account Security</h3>
+              <nav className="space-y-1">
+                {sidebarLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href="#"
+                    className={
+                      link.active
+                        ? "block text-sm py-2 px-3 rounded-lg bg-emerald-50 text-emerald-700 font-medium border border-emerald-100"
+                        : "block text-sm py-2 px-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-gray-50 transition-colors"
+                    }
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </nav>
+            </aside>
+
+            <main className="flex-1 min-w-0 max-w-3xl">
+              <article>
+                <h1 className="text-3xl sm:text-4xl font-bold text-foreground leading-tight mb-6">
+                  What to do when you receive an unauthorized login notification
+                </h1>
+
+                <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+                  If you received an email indicating that someone logged in to your Blockstream account from an unfamiliar device or location, this guide will help you understand what happened and take the appropriate steps to protect your funds.
+                </p>
+
+                <div className="callout-note mb-8">
+                  <p className="text-sm leading-relaxed">
+                    <strong>Don't panic.</strong> Receiving a login notification does not necessarily mean your funds are at risk. Blockstream accounts are protected by multiple layers of security, and in many cases the activity is from a device or network you simply don't recognize at first.
+                  </p>
+                </div>
+
+                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">
+                  Step 1: Verify the login activity
+                </h2>
+                <p className="text-base text-muted-foreground leading-relaxed mb-4">
+                  Before taking any action, review the details in the notification email:
+                </p>
+                <ul className="space-y-3 mb-8 ml-1">
+                  <ListItem>Check the <strong>device name</strong> and <strong>operating system</strong> — it may be a device you use but don't immediately recognize (e.g., a work laptop, tablet, or new phone).</ListItem>
+                  <ListItem>Check the <strong>IP address and location</strong> — VPNs and mobile networks can show unfamiliar locations even for legitimate logins.</ListItem>
+                  <ListItem>Check the <strong>timestamp</strong> — does it correspond to a time you were actively using your account?</ListItem>
+                </ul>
+
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-8">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-800 mb-1">If you recognize the activity</p>
+                      <p className="text-sm text-emerald-700/80">No further action is needed. These notifications are a normal part of Blockstream's security monitoring. You can review your active sessions at any time in your account settings.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4 flex items-center gap-3">
+                  <ShieldAlert className="w-6 h-6 text-red-500" />
+                  Step 2: If you don't recognize the login
+                </h2>
+                <p className="text-base text-muted-foreground leading-relaxed mb-6">
+                  If you are unable to identify the login activity, take these steps <strong>immediately</strong> to secure your account:
+                </p>
+
+                <div className="space-y-4 mb-8">
+                  <SecurityStep
+                    number={1}
+                    icon={Lock}
+                    title="Freeze account operations"
+                    description="Navigate to Settings > Security > Freeze Account. This will temporarily halt all withdrawals and sensitive account changes. Your funds remain safe and accessible once you unfreeze."
+                  />
+                  <SecurityStep
+                    number={2}
+                    icon={KeyRound}
+                    title="Revoke all active sessions"
+                    description="Go to Settings > Security > Active Sessions and click 'Revoke All.' This will log out every device currently connected to your account, including any unauthorized sessions."
+                  />
+                  <SecurityStep
+                    number={3}
+                    icon={Smartphone}
+                    title="Reset your password and enable 2FA"
+                    description="Change your password immediately and enable two-factor authentication (2FA) if it is not already active. We recommend using an authenticator app rather than SMS-based 2FA."
+                  />
+                </div>
+
+                <div className="callout-note mb-8">
+                  <p className="text-sm leading-relaxed">
+                    <strong>Important:</strong> Never share your recovery phrase, PIN, or 2FA codes with anyone — including anyone claiming to be from Blockstream support. Our team will never ask for these credentials.
+                  </p>
+                </div>
+
+                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">
+                  Step 3: Review your transaction history
+                </h2>
+                <p className="text-base text-muted-foreground leading-relaxed mb-4">
+                  After securing your account, check your recent transaction history in the Blockstream App or Green Wallet for any unauthorized activity:
+                </p>
+                <ul className="space-y-3 mb-8 ml-1">
+                  <ListItem>Look for any transactions you don't recognize.</ListItem>
+                  <ListItem>Check for any changes to your withdrawal addresses or whitelist settings.</ListItem>
+                  <ListItem>Review any API key activity if you use the Blockstream API.</ListItem>
+                </ul>
+
+                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">
+                  Still need help?
+                </h2>
+                <p className="text-base text-muted-foreground leading-relaxed mb-6">
+                  If you believe your account has been compromised or you notice unauthorized transactions, contact our support team immediately. You can use the chat assistant in the bottom-right corner to get instant help, or reach out through our official support channels:
+                </p>
+
+                <div className="flex flex-wrap gap-3 mb-10">
+                  <a
+                    href="https://help.blockstream.com"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+                  >
+                    Contact Support
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <a
+                    href="https://help.blockstream.com/hc/en-us/categories/900000056183"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-foreground rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    View all security articles
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6 mt-10">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Last updated: March 2026</span>
+                    <div className="flex items-center gap-1 text-emerald-600">
+                      <span className="font-medium">Emerald Verified</span>
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </main>
+          </div>
+        </div>
+      </div>
+
+      <footer className="bg-[#111316] text-gray-400 text-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="15" stroke="#10B981" strokeWidth="2" />
+                <path d="M10 16.5L14.5 21L23 11" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+              <span className="text-gray-300 font-semibold">Blockstream</span>
+            </div>
+            <p>&copy; 2026 Blockstream Corporation Inc. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      <ChatWidget />
+    </div>
+  );
+}
+
+function ListItem({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="mt-2 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+      <span className="text-base text-muted-foreground leading-relaxed">{children}</span>
+    </li>
+  );
+}
+
+function SecurityStep({ number, icon: Icon, title, description }: { number: number; icon: any; title: string; description: string }) {
+  return (
+    <div className="flex gap-4 p-5 bg-gray-50 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
+      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+        {number}
+      </div>
+      <div>
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-1.5">
+          <Icon className="w-4 h-4 text-muted-foreground" />
+          {title}
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      </div>
     </div>
   );
 }

@@ -2,8 +2,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Space Grotesk', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -26,6 +26,8 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-emerald: hsl(var(--emerald));
+  --color-emerald-foreground: hsl(var(--emerald-foreground));
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -35,37 +37,46 @@
 }
 
 :root {
-  /* Blockstream Dark Mode Colors */
-  --background: 216 13% 6%;      /* #0D0F12 */
-  --foreground: 210 40% 98%;     /* Off-white */
-  
-  --card: 216 13% 9%;            /* #15181C */
-  --card-foreground: 210 40% 98%;
-  
-  --popover: 216 13% 11%;
-  --popover-foreground: 210 40% 98%;
-  
-  --primary: 194 100% 50%;       /* #00C3FF Blockstream Blue */
-  --primary-foreground: 222 47% 11%;
-  
-  --secondary: 216 13% 14%;      /* Lighter grey for user bubbles */
-  --secondary-foreground: 210 40% 98%;
-  
-  --muted: 216 13% 12%;
-  --muted-foreground: 215 20.2% 65.1%;
-  
-  --accent: 172 79% 51%;         /* #22E1C9 Turquoise */
-  --accent-foreground: 222 47% 11%;
-  
-  --destructive: 0 84% 60%;      /* Red for security */
-  --destructive-foreground: 210 40% 98%;
+  --background: 0 0% 100%;
+  --foreground: 224 10% 15%;
 
-  --warning: 35 100% 55%;        /* Orange/Yellow for warnings */
+  --card: 0 0% 100%;
+  --card-foreground: 224 10% 15%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 10% 15%;
+
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 11% 96%;
+  --secondary-foreground: 224 10% 15%;
+
+  --muted: 210 11% 96%;
+  --muted-foreground: 215 14% 45%;
+
+  --accent: 160 84% 39%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --warning: 35 100% 55%;
   --warning-foreground: 222 47% 11%;
-  
-  --border: 216 13% 18%;
-  --input: 216 13% 16%;
-  --ring: 194 100% 50%;
+
+  --border: 214 16% 89%;
+  --input: 214 16% 89%;
+  --ring: 160 84% 39%;
+
+  --emerald: 160 84% 39%;
+  --emerald-foreground: 0 0% 100%;
+
+  --widget-bg: 220 13% 10%;
+  --widget-fg: 210 40% 98%;
+  --widget-card: 220 13% 14%;
+  --widget-border: 220 13% 22%;
+  --widget-muted: 215 14% 55%;
+  --widget-input: 220 13% 18%;
 }
 
 @layer base {
@@ -75,18 +86,14 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    /* Force dark mode background globally */
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    @apply tracking-tight;
+    font-family: var(--font-sans);
+    @apply font-bold tracking-tight;
   }
 }
 
-/* Custom scrollbar for chat */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -102,22 +109,29 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-.glass-panel {
-  @apply bg-background/60 backdrop-blur-xl border border-white/5;
+.chat-widget {
+  --background: var(--widget-bg);
+  --foreground: var(--widget-fg);
+  --card: var(--widget-card);
+  --card-foreground: var(--widget-fg);
+  --popover: var(--widget-card);
+  --popover-foreground: var(--widget-fg);
+  --secondary: 220 13% 18%;
+  --secondary-foreground: var(--widget-fg);
+  --muted: 220 13% 16%;
+  --muted-foreground: var(--widget-muted);
+  --border: var(--widget-border);
+  --input: var(--widget-input);
+  color: hsl(var(--widget-fg));
 }
 
-.bg-grid-pattern {
-  background-size: 40px 40px;
-  background-image: 
-    linear-gradient(to right, hsl(var(--primary) / 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--primary) / 0.03) 1px, transparent 1px);
+.chat-widget ::-webkit-scrollbar-thumb {
+  background: hsl(var(--widget-muted) / 0.3);
 }
 
-.texture-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0.15;
-  mix-blend-mode: overlay;
+.callout-note {
+  border-left: 4px solid hsl(var(--warning));
+  background: hsl(var(--warning) / 0.06);
+  padding: 1rem 1.25rem;
+  border-radius: 0 0.5rem 0.5rem 0;
 }
