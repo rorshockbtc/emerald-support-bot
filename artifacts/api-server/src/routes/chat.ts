@@ -118,14 +118,7 @@ router.post("/escalate", async (req, res): Promise<void> => {
   };
 
   console.log("=== ZENDESK TICKET PAYLOAD ===");
-  console.log(JSON.stringify({
-    ticket: {
-      subject: ticket.subject,
-      priority: ticket.priority,
-      sessionHash,
-      messageCount: chatHistory.length,
-    }
-  }, null, 2));
+  console.log(JSON.stringify({ ticket }, null, 2));
   console.log("=== END ZENDESK PAYLOAD ===");
 
   res.json(EscalateTicketResponse.parse({
