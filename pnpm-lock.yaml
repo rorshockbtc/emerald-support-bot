@@ -37,16 +37,16 @@ catalogs:
       specifier: ^0.7.1
       version: 0.7.1
     clsx:
-      specifier: ^2.1.1
+      specifier: 2.1.1
       version: 2.1.1
     drizzle-orm:
       specifier: ^0.45.1
       version: 0.45.1
     framer-motion:
-      specifier: ^12.23.24
+      specifier: 12.35.1
       version: 12.35.1
     lucide-react:
-      specifier: ^0.545.0
+      specifier: 0.545.0
       version: 0.545.0
     react:
       specifier: 19.1.0
@@ -55,7 +55,7 @@ catalogs:
       specifier: 19.1.0
       version: 19.1.0
     tailwind-merge:
-      specifier: ^3.3.1
+      specifier: 3.5.0
       version: 3.5.0
     tailwindcss:
       specifier: ^4.1.14
@@ -184,6 +184,9 @@ importers:
       express:
         specifier: ^5
         version: 5.2.1
+      together-ai:
+        specifier: ^0.37.0
+        version: 0.37.0
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10
@@ -205,6 +208,13 @@ importers:
         version: 4.21.0
 
   artifacts/emerald:
+    dependencies:
+      '@types/uuid':
+        specifier: ^11.0.0
+        version: 11.0.0
+      uuid:
+        specifier: ^13.0.0
+        version: 13.0.0
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
@@ -623,6 +633,10 @@ importers:
         version: 0.31.9
 
   scripts:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1690,6 +1704,10 @@ packages:
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+
+  '@types/uuid@11.0.0':
+    resolution: {integrity: sha512-HVyk8nj2m+jcFRNazzqyVKiZezyhDKrGUA3jlEcg/nZ6Ms+qHwocba1Y/AaVaznJTAM9xpdFSh+ptbNrhOGvZA==}
+    deprecated: This is a stub types definition. uuid provides its own type definitions, so you do not need this installed.
 
   '@vitejs/plugin-react@5.1.4':
     resolution: {integrity: sha512-VIcFLdRi/VYRU8OL/puL7QXMYafHmqOnwTZY50U1JPlCNj30PxCMx65c494b1K9be9hX83KVt0+gTEwTWLqToA==}
@@ -2851,6 +2869,10 @@ packages:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
     engines: {node: '>=8.0'}
 
+  together-ai@0.37.0:
+    resolution: {integrity: sha512-UiZY8HrDkl86naJcY5Q48WOKdmwNf5X5yzGoZU4G58iZM6v/e7bBLLilEr5OcYVQ0RgyjpiHTkaAA0k4yNZU9Q==}
+    hasBin: true
+
   toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
@@ -2959,6 +2981,10 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
+
+  uuid@13.0.0:
+    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
+    hasBin: true
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -4278,6 +4304,10 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
+  '@types/uuid@11.0.0':
+    dependencies:
+      uuid: 13.0.0
+
   '@vitejs/plugin-react@5.1.4(vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@babel/core': 7.29.0
@@ -5326,6 +5356,8 @@ snapshots:
     dependencies:
       is-number: 7.0.0
 
+  together-ai@0.37.0: {}
+
   toidentifier@1.0.1: {}
 
   tsconfck@3.1.6(typescript@5.9.3):
@@ -5406,6 +5438,8 @@ snapshots:
       react: 19.1.0
 
   util-deprecate@1.0.2: {}
+
+  uuid@13.0.0: {}
 
   vary@1.1.2: {}
 

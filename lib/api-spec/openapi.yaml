@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Emerald Support Bot API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: articles
+    description: Help center article operations
+  - name: chat
+    description: Chat and bot interaction operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,91 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /articles:
+    get:
+      operationId: listArticles
+      tags: [articles]
+      summary: List help articles
+      description: Returns all help center articles, optionally filtered by category
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search query to filter articles by title/description
+      responses:
+        "200":
+          description: List of articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Article"
+  /articles/{id}:
+    get:
+      operationId: getArticle
+      tags: [articles]
+      summary: Get a single article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Article details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+        "404":
+          description: Article not found
+  /chat:
+    post:
+      operationId: sendMessage
+      tags: [chat]
+      summary: Send a chat message
+      description: Sends a user message, runs local intent matching and optional LLM enhancement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Bot response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+  /escalate:
+    post:
+      operationId: escalateTicket
+      tags: [chat]
+      summary: Escalate to human support
+      description: Generates a Zendesk-formatted support ticket payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalateRequest"
+      responses:
+        "200":
+          description: Zendesk ticket payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EscalateResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +122,143 @@ components:
           type: string
       required:
         - status
-
+    Article:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        body:
+          type: string
+        category:
+          type: string
+        sourceUrl:
+          type: string
+        trustScore:
+          type: number
+        lastUpdated:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - body
+        - category
+        - sourceUrl
+        - trustScore
+        - lastUpdated
+    ChatRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        sessionId:
+          type: string
+      required:
+        - message
+        - sessionId
+    ChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        intent:
+          type: string
+        trustScore:
+          type: number
+        isSecurityAlert:
+          type: boolean
+        isFinancialAdvice:
+          type: boolean
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceReference"
+        ciBreakdown:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+        relatedArticles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Article"
+      required:
+        - reply
+        - intent
+        - trustScore
+        - isSecurityAlert
+        - isFinancialAdvice
+        - sources
+        - ciBreakdown
+        - lastUpdated
+    SourceReference:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        type:
+          type: string
+      required:
+        - title
+        - url
+        - type
+    EscalateRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        subject:
+          type: string
+        chatHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required:
+        - sessionId
+        - subject
+        - chatHistory
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - role
+        - content
+        - timestamp
+    EscalateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        ticketPayload:
+          type: object
+          properties:
+            subject:
+              type: string
+            comment:
+              type: string
+            priority:
+              type: string
+            sessionHash:
+              type: string
+          required:
+            - subject
+            - comment
+            - priority
+            - sessionHash
+      required:
+        - success
+        - ticketPayload
