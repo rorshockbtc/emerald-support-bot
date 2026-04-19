@@ -192,6 +192,12 @@ export function ChatWidget() {
         relatedArticles: response.relatedArticles,
         responseSource: 'cloud',
         cloudReason,
+        // Cloud responses don't see the bias filter today (the cloud
+        // backend is bias-unaware), but the per-message bias label
+        // still reflects which perspective the user was viewing when
+        // the reply landed — keeps provenance honest.
+        biasLabel: activeBiasOption?.label,
+        biasId: pipe.pipe ? pipe.activeBiasId : undefined,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -544,20 +550,25 @@ function ModeBadge({ connected, pipeName }: { connected: boolean; pipeName?: str
     return (
       <span
         className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-px rounded border border-pink-500/40 bg-pink-500/10 text-pink-200"
-        title={pipeName ? `Greater mode · ${pipeName}` : 'Greater mode'}
+        title={
+          pipeName
+            ? `Greater mode · ${pipeName} — running with a curated Pipe loaded from data/pipes/. The shell is FOSS; the Pipe is the part that's for hire.`
+            : 'Greater mode — running with a curated Pipe loaded from data/pipes/. The shell is FOSS; the Pipe is the part that\u2019s for hire.'
+        }
         data-testid="badge-mode"
       >
-        Greater
+        <span className="text-pink-400 font-bold">&gt;</span>
+        Greater mode
       </span>
     );
   }
   return (
     <span
       className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-px rounded border border-[hsl(var(--widget-border))] bg-white/5 text-[hsl(var(--widget-muted))]"
-      title="Generic mode — no Pipe loaded"
+      title="Generic mode — no Pipe is loaded for this demo. The FOSS shell runs honestly without one; mounting a Pipe under data/pipes/ unlocks Greater mode for this persona."
       data-testid="badge-mode"
     >
-      Generic
+      Generic mode
     </span>
   );
 }

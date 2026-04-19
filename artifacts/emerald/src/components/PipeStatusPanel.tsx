@@ -84,6 +84,12 @@ export function PipeStatusPanel({
                 <div className="text-[11px] text-[hsl(var(--widget-muted))] font-mono">
                   {pipe.pipe_id} · v{pipe.version} · persona “{pipe.persona}”
                 </div>
+                <div className="text-[10px] text-[hsl(var(--widget-muted))] mt-0.5">
+                  Authored {new Date(pipe.created_at).toLocaleDateString()} ·{" "}
+                  {pipe.corpus_bundles.reduce((n, b) => n + b.chunk_count, 0)}{" "}
+                  chunks across {pipe.corpus_bundles.length} bundle
+                  {pipe.corpus_bundles.length === 1 ? "" : "s"}
+                </div>
               </div>
               <SignatureBadge status={pipe.signature.status} />
             </div>
@@ -135,18 +141,38 @@ export function PipeStatusPanel({
                 <h4 className="text-[10px] uppercase tracking-wider text-[hsl(var(--widget-muted))] mb-1">
                   Bundled corpora
                 </h4>
-                <ul className="space-y-1 text-[11px]">
-                  {pipe.corpus_bundles.map((b) => (
-                    <li
-                      key={b.path}
-                      className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-white/5"
-                    >
-                      <span className="font-mono truncate">{b.path}</span>
-                      <span className="shrink-0 text-[hsl(var(--widget-muted))]">
-                        {b.chunk_count} chunks
-                      </span>
-                    </li>
-                  ))}
+                <ul className="space-y-1.5 text-[11px]">
+                  {pipe.corpus_bundles.map((b) => {
+                    const distEntries = Object.entries(b.bias_distribution);
+                    return (
+                      <li
+                        key={b.path}
+                        className="px-2 py-1.5 rounded bg-white/5 space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono truncate">{b.path}</span>
+                          <span className="shrink-0 text-[hsl(var(--widget-muted))]">
+                            {b.chunk_count} chunks
+                          </span>
+                        </div>
+                        {distEntries.length > 0 && (
+                          <div className="flex flex-wrap gap-1 text-[10px] text-[hsl(var(--widget-muted))]">
+                            {distEntries.map(([biasId, count]) => (
+                              <span
+                                key={biasId}
+                                className="inline-flex items-center gap-1 px-1.5 py-px rounded bg-white/5 border border-[hsl(var(--widget-border))]"
+                              >
+                                <span className="font-mono uppercase tracking-wider text-[9px]">
+                                  {biasId}
+                                </span>
+                                <span className="tabular-nums">{count}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
