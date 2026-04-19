@@ -62,8 +62,17 @@ export interface SitemapRequest {
   url: string;
 }
 
-export interface SitemapResponse {
-  sitemapUrl: string;
+export interface RssRequest {
+  url: string;
+}
+
+/**
+ * Common response shape for any URL-discovery ingest endpoint
+(sitemap, RSS/Atom). `sourceUrl` echoes the input feed/sitemap.
+
+ */
+export interface DiscoveredUrls {
+  sourceUrl: string;
   urls: string[];
   truncated: boolean;
 }

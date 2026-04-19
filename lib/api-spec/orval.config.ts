@@ -57,9 +57,15 @@ export default defineConfig({
       prettier: true,
       override: {
         zod: {
+          // Coerce Date fields on the wire. JSON has no Date type, so
+          // every `format: date-time` field crosses the boundary as an
+          // ISO string. Without coercion, `z.date()` validation rejects
+          // those strings and breaks any endpoint with a timestamp body.
           coerce: {
-            query: ['boolean', 'number', 'string'],
-            param: ['boolean', 'number', 'string'],
+            body: ['date'],
+            response: ['date'],
+            query: ['boolean', 'number', 'string', 'date'],
+            param: ['boolean', 'number', 'string', 'date'],
           },
         },
         useDates: true,

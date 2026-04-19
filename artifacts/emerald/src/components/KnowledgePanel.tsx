@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { Database, Globe, Loader2, Trash2, X } from "lucide-react";
+import {
+  Database,
+  FileText,
+  Globe,
+  Loader2,
+  Network,
+  Rss,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useLLM } from "@/llm/LLMProvider";
-import { deleteBySource, listSources } from "@/llm/vectorStore";
-import type { IndexedSource, IngestProgress } from "@/llm/types";
+import { deleteByJob, listSources } from "@/llm/vectorStore";
+import type { IndexedSource, IngestProgress, JobKind } from "@/llm/types";
+import type { IngestMode } from "@/llm/ingest";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +25,43 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-type Mode = "page" | "sitemap";
+const MODE_META: Record<
+  IngestMode,
+  { label: string; placeholder: string }
+> = {
+  page: {
+    label: "Single page",
+    placeholder: "https://example.com/article",
+  },
+  sitemap: {
+    label: "Sitemap",
+    placeholder: "https://example.com/sitemap.xml",
+  },
+  rss: {
+    label: "RSS / Atom",
+    placeholder: "https://example.com/feed.xml",
+  },
+};
+
+const JOB_KIND_META: Record<
+  JobKind,
+  { label: string; Icon: typeof Globe }
+> = {
+  page: { label: "Page", Icon: Globe },
+  sitemap: { label: "Sitemap", Icon: Network },
+  rss: { label: "Feed", Icon: Rss },
+  seed: { label: "Seed corpus", Icon: Database },
+  "bitcoin-bundle": { label: "Bitcoin bundle", Icon: FileText },
+};
+
+function formatRelative(ts?: number): string {
+  if (!ts) return "—";
+  const delta = Date.now() - ts;
+  if (delta < 60_000) return "just now";
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;
+  return `${Math.floor(delta / 86_400_000)}d ago`;
+}
 
 export function KnowledgePanel({
   isOpen,
@@ -28,7 +74,7 @@ export function KnowledgePanel({
   const { toast } = useToast();
 
   const [url, setUrl] = useState("");
-  const [mode, setMode] = useState<Mode>("page");
+  const [mode, setMode] = useState<IngestMode>("page");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<IngestProgress | null>(null);
   const [sources, setSources] = useState<IndexedSource[]>([]);
@@ -87,12 +133,12 @@ export function KnowledgePanel({
     }
   };
 
-  const handleRemove = async (sourceUrl: string) => {
+  const handleRemove = async (source: IndexedSource) => {
     try {
-      const removed = await deleteBySource(sourceUrl);
+      const removed = await deleteByJob(source.job_id);
       toast({
         title: "Source removed",
-        description: `Removed ${removed} chunk${removed === 1 ? "" : "s"}.`,
+        description: `Removed ${removed} chunk${removed === 1 ? "" : "s"} across ${source.page_count} page${source.page_count === 1 ? "" : "s"}.`,
       });
       await refreshSources();
     } catch (err) {
@@ -105,6 +151,7 @@ export function KnowledgePanel({
   };
 
   const totalChunks = sources.reduce((n, s) => n + s.chunk_count, 0);
+  const totalPages = sources.reduce((n, s) => n + s.page_count, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -115,16 +162,17 @@ export function KnowledgePanel({
             Knowledge base
           </DialogTitle>
           <DialogDescription className="text-[hsl(var(--widget-muted))]">
-            Index pages or sitemaps into the in-browser knowledge base. Extraction
-            and embedding run locally — no LLM is invoked during indexing, and
-            indexed content lives in your browser only.
+            Index pages, sitemaps, or RSS / Atom feeds into the in-browser
+            knowledge base. Extraction and embedding run locally — no LLM is
+            invoked during indexing, and indexed content lives in your browser
+            only.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="flex rounded-md border border-[hsl(var(--widget-border))] overflow-hidden text-xs">
-              {(["page", "sitemap"] as const).map((m) => (
+              {(["page", "sitemap", "rss"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -136,18 +184,14 @@ export function KnowledgePanel({
                       : "text-[hsl(var(--widget-muted))] hover:bg-white/5",
                   )}
                 >
-                  {m === "page" ? "Single page" : "Sitemap"}
+                  {MODE_META[m].label}
                 </button>
               ))}
             </div>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder={
-                mode === "page"
-                  ? "https://example.com/article"
-                  : "https://example.com/sitemap.xml"
-              }
+              placeholder={MODE_META[mode].placeholder}
               className="bg-transparent border-[hsl(var(--widget-border))] text-sm"
               disabled={busy}
               onKeyDown={(e) => {
@@ -168,9 +212,7 @@ export function KnowledgePanel({
             </p>
           )}
 
-          {progress && (
-            <ProgressLine progress={progress} />
-          )}
+          {progress && <ProgressLine progress={progress} />}
         </div>
 
         <div className="border-t border-[hsl(var(--widget-border))] pt-3">
@@ -179,7 +221,8 @@ export function KnowledgePanel({
               Indexed sources
             </h4>
             <span className="text-[11px] text-[hsl(var(--widget-muted))]">
-              {sources.length} source{sources.length === 1 ? "" : "s"} · {totalChunks} chunk
+              {sources.length} source{sources.length === 1 ? "" : "s"} ·{" "}
+              {totalPages} page{totalPages === 1 ? "" : "s"} · {totalChunks} chunk
               {totalChunks === 1 ? "" : "s"}
             </span>
           </div>
@@ -189,45 +232,55 @@ export function KnowledgePanel({
             </p>
           ) : (
             <ul className="space-y-1 max-h-72 overflow-y-auto pr-1">
-              {sources.map((s) => (
-                <li
-                  key={s.source_url}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 group"
-                >
-                  <Globe className="w-3.5 h-3.5 text-[hsl(var(--widget-muted))] shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">
-                      {s.source_label}
-                    </div>
-                    <div className="text-[10px] text-[hsl(var(--widget-muted))] truncate flex items-center gap-2">
-                      <span className="truncate">{s.source_url}</span>
-                      {s.bias && s.bias !== "neutral" && (
-                        <span
-                          className={cn(
-                            "shrink-0 px-1.5 py-px rounded uppercase tracking-wider text-[9px]",
-                            s.bias === "core"
-                              ? "bg-orange-500/20 text-orange-300"
-                              : "bg-purple-500/20 text-purple-300",
-                          )}
-                        >
-                          {s.bias}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-[hsl(var(--widget-muted))] shrink-0">
-                    {s.chunk_count}
-                  </span>
-                  <button
-                    onClick={() => void handleRemove(s.source_url)}
-                    className="p-1 text-[hsl(var(--widget-muted))] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label={`Remove ${s.source_label}`}
-                    title="Remove"
+              {sources.map((s) => {
+                const Icon = JOB_KIND_META[s.job_kind].Icon;
+                return (
+                  <li
+                    key={s.job_id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 group"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </li>
-              ))}
+                    <Icon className="w-3.5 h-3.5 text-[hsl(var(--widget-muted))] shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate flex items-center gap-2">
+                        <span className="truncate">{s.job_label}</span>
+                        <span className="shrink-0 px-1.5 py-px rounded uppercase tracking-wider text-[9px] bg-white/5 text-[hsl(var(--widget-muted))]">
+                          {JOB_KIND_META[s.job_kind].label}
+                        </span>
+                        {s.bias && s.bias !== "neutral" && (
+                          <span
+                            className={cn(
+                              "shrink-0 px-1.5 py-px rounded uppercase tracking-wider text-[9px]",
+                              s.bias === "core"
+                                ? "bg-orange-500/20 text-orange-300"
+                                : "bg-purple-500/20 text-purple-300",
+                            )}
+                          >
+                            {s.bias}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-[hsl(var(--widget-muted))] truncate">
+                        {s.job_root_url}
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-[hsl(var(--widget-muted))] shrink-0 text-right leading-tight">
+                      <div>
+                        {s.page_count} page{s.page_count === 1 ? "" : "s"} ·{" "}
+                        {s.chunk_count} chunk{s.chunk_count === 1 ? "" : "s"}
+                      </div>
+                      <div>{formatRelative(s.indexed_at)}</div>
+                    </div>
+                    <button
+                      onClick={() => void handleRemove(s)}
+                      className="p-1 text-[hsl(var(--widget-muted))] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={`Remove ${s.job_label}`}
+                      title="Remove"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

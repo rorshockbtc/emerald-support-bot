@@ -49,9 +49,10 @@ const BITCOIN_BUNDLE_VERSION = "v1";
 const BITCOIN_BUNDLE_URL = `${import.meta.env.BASE_URL}seeds/bitcoin.json`;
 
 interface BitcoinBundleDoc {
+  /** Per-page URL inside the bundle. */
   source_url: string;
+  /** Per-page title inside the bundle. */
   source_label: string;
-  source_type?: string;
   bias?: "core" | "knots" | "neutral";
   chunks: { text: string; chunk_index: number }[];
 }
@@ -61,6 +62,15 @@ interface BitcoinBundle {
   generated_at?: string;
   documents: BitcoinBundleDoc[];
 }
+
+/** Job-id constants used for the two built-in corpora. */
+const SEED_JOB_ID = "seed-blockstream";
+const SEED_JOB_ROOT_URL = "https://help.blockstream.com/";
+const SEED_JOB_LABEL = "Blockstream support seed corpus";
+
+const BITCOIN_JOB_ID = "bitcoin-bundle";
+const BITCOIN_JOB_ROOT_URL = "internal://bitcoin-knowledge-bundle";
+const BITCOIN_JOB_LABEL = "Bitcoin knowledge bundle";
 
 export interface BundleLoadProgress {
   total_chunks: number;
@@ -167,10 +177,17 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       const vec = await callWorker<number[]>("embed", { text: chunk.text });
       await putChunkWithVector(
         {
-          ...chunk,
+          id: chunk.id,
+          job_id: SEED_JOB_ID,
+          job_root_url: SEED_JOB_ROOT_URL,
+          job_label: SEED_JOB_LABEL,
+          job_kind: "seed",
+          page_url: chunk.page_url,
+          page_label: chunk.page_label,
+          chunk_index: chunk.chunk_index,
+          text: chunk.text,
           bias: chunk.bias ?? "neutral",
-          source_type: chunk.source_type ?? "seed",
-          indexed_at: chunk.indexed_at ?? indexedAt,
+          indexed_at: indexedAt,
         },
         vec,
       );
@@ -226,13 +243,16 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         const vec = await callWorker<number[]>("embed", { text: ch.text });
         await putChunkWithVector(
           {
-            id: `${doc.source_url}#${ch.chunk_index}`,
-            source_url: doc.source_url,
-            source_label: doc.source_label,
+            id: `${BITCOIN_JOB_ID}::${doc.source_url}#${ch.chunk_index}`,
+            job_id: BITCOIN_JOB_ID,
+            job_root_url: BITCOIN_JOB_ROOT_URL,
+            job_label: BITCOIN_JOB_LABEL,
+            job_kind: "bitcoin-bundle",
+            page_url: doc.source_url,
+            page_label: doc.source_label,
             chunk_index: ch.chunk_index,
             text: ch.text,
             bias,
-            source_type: "bitcoin-bundle",
             indexed_at: installedAt,
           },
           vec,
@@ -476,7 +496,7 @@ function formatRetrievedForPrompt(chunks: RetrievedChunk[]): string {
   return chunks
     .map(
       (c, i) =>
-        `[${i + 1}] ${c.source_label} (${c.source_url})\n${c.text}`,
+        `[${i + 1}] ${c.page_label} (${c.page_url})\n${c.text}`,
     )
     .join("\n\n");
 }
@@ -484,5 +504,5 @@ function formatRetrievedForPrompt(chunks: RetrievedChunk[]): string {
 function summarizeRetrieval(chunks: RetrievedChunk[]): string {
   if (chunks.length === 0) return "No relevant chunks were found in the corpus.";
   const top = chunks[0];
-  return `Retrieved ${chunks.length} chunks; top match was "${top.source_label}" (similarity ${top.score.toFixed(3)}).`;
+  return `Retrieved ${chunks.length} chunks; top match was "${top.page_label}" (similarity ${top.score.toFixed(3)}).`;
 }

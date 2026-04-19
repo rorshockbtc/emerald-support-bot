@@ -20,14 +20,15 @@ import type {
   Article,
   ChatRequest,
   ChatResponse,
+  DiscoveredUrls,
   EscalateRequest,
   EscalateResponse,
   ExtractRequest,
   ExtractResponse,
   HealthStatus,
   ListArticlesParams,
+  RssRequest,
   SitemapRequest,
-  SitemapResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -485,8 +486,8 @@ export const getIngestSitemapUrl = () => {
 export const ingestSitemap = async (
   sitemapRequest: SitemapRequest,
   options?: RequestInit,
-): Promise<SitemapResponse> => {
-  return customFetch<SitemapResponse>(getIngestSitemapUrl(), {
+): Promise<DiscoveredUrls> => {
+  return customFetch<DiscoveredUrls>(getIngestSitemapUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -559,6 +560,97 @@ export const useIngestSitemap = <
   TContext
 > => {
   return useMutation(getIngestSitemapMutationOptions(options));
+};
+
+/**
+ * Mirrors `/ingest/sitemap` for syndication feeds. Accepts RSS 2.0 and
+Atom 1.0 documents; returns the link of each entry in document order.
+Useful for blog-style sources (Bitcoin Optech, project-news feeds)
+where there is no sitemap.xml.
+
+ * @summary Fetch and parse an RSS or Atom feed into a flat list of entry URLs
+ */
+export const getIngestRssUrl = () => {
+  return `/api/ingest/rss`;
+};
+
+export const ingestRss = async (
+  rssRequest: RssRequest,
+  options?: RequestInit,
+): Promise<DiscoveredUrls> => {
+  return customFetch<DiscoveredUrls>(getIngestRssUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rssRequest),
+  });
+};
+
+export const getIngestRssMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestRss>>,
+    TError,
+    { data: BodyType<RssRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ingestRss>>,
+  TError,
+  { data: BodyType<RssRequest> },
+  TContext
+> => {
+  const mutationKey = ["ingestRss"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ingestRss>>,
+    { data: BodyType<RssRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ingestRss(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IngestRssMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ingestRss>>
+>;
+export type IngestRssMutationBody = BodyType<RssRequest>;
+export type IngestRssMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Fetch and parse an RSS or Atom feed into a flat list of entry URLs
+ */
+export const useIngestRss = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestRss>>,
+    TError,
+    { data: BodyType<RssRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ingestRss>>,
+  TError,
+  { data: BodyType<RssRequest> },
+  TContext
+> => {
+  return useMutation(getIngestRssMutationOptions(options));
 };
 
 /**

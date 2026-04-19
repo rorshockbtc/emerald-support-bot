@@ -145,12 +145,12 @@ export function ChatMessage({
                           [{i + 1}] sim {c.score.toFixed(3)}
                         </span>
                         <a
-                          href={c.source_url}
+                          href={c.page_url}
                           target="_blank"
                           rel="noreferrer noopener"
                           className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
                         >
-                          {c.source_label}
+                          {c.page_label}
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
@@ -236,10 +236,10 @@ function renderWithCitations(text: string, chunks: RetrievedChunk[]): React.Reac
               <React.Fragment key={n}>
                 {i > 0 && <span className="text-muted-foreground">,</span>}
                 <a
-                  href={c.source_url}
+                  href={c.page_url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  title={c.source_label}
+                  title={c.page_label}
                   className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
                   data-testid={`link-citation-${n}`}
                 >

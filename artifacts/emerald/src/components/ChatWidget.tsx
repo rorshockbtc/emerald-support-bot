@@ -307,6 +307,39 @@ export function ChatWidget() {
               )}
             </AnimatePresence>
 
+            {llm.bundleProgress && !llm.bundleProgress.done && (
+              <div className="bg-emerald-900/30 border-b border-emerald-700/40 px-4 py-2 text-[11px] text-emerald-100 leading-relaxed shrink-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading Bitcoin knowledge bundle into your browser…
+                  </span>
+                  <span className="tabular-nums text-emerald-200/80">
+                    {llm.bundleProgress.done_chunks}/{llm.bundleProgress.total_chunks}
+                  </span>
+                </div>
+                <div className="h-1 bg-white/5 rounded overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all"
+                    style={{
+                      width: `${
+                        llm.bundleProgress.total_chunks > 0
+                          ? Math.min(
+                              100,
+                              Math.round(
+                                (llm.bundleProgress.done_chunks /
+                                  llm.bundleProgress.total_chunks) *
+                                  100,
+                              ),
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {llm.status === 'unsupported' && (
               <div className="bg-sky-900/30 border-b border-sky-700/40 px-4 py-2 text-[11px] text-sky-200 leading-relaxed shrink-0">
                 Your browser doesn't support local AI &mdash; using cloud mode.

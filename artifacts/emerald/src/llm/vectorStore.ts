@@ -4,9 +4,10 @@ import type { Bias, IndexedSource, KbChunk, RetrievedChunk } from "./types";
 /**
  * IndexedDB-backed vector store for the Greater RAG pipeline.
  *
- * - `documents` keeps the human-readable corpus chunks (text + source +
- *   bias). A `source_url` index supports fast delete-by-source for the
- *   Knowledge panel.
+ * - `documents` keeps the human-readable corpus chunks (text + page URL +
+ *   ingestion-job metadata + bias). A `by_job_id` index supports fast
+ *   "remove this source" semantics in the Knowledge panel; a
+ *   `by_page_url` index is kept to dedupe re-indexing the same page.
  * - `embeddings` keeps the dense vectors keyed by document id.
  * - `meta` records the seed-corpus version + the embedder used to build
  *   the index so cache invalidation is automatic when either changes,
@@ -19,7 +20,7 @@ import type { Bias, IndexedSource, KbChunk, RetrievedChunk } from "./types";
  */
 
 const DB_NAME = "greater-vector-store";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 interface DocumentRow extends KbChunk {}
 interface EmbeddingRow {
@@ -39,7 +40,7 @@ interface GreaterVectorDB extends DBSchema {
   documents: {
     key: string;
     value: DocumentRow;
-    indexes: { by_source_url: string };
+    indexes: { by_job_id: string; by_page_url: string };
   };
   embeddings: { key: string; value: EmbeddingRow };
   meta: { key: string; value: MetaRow };
@@ -57,11 +58,36 @@ function getDb() {
       upgrade(db, oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains("documents")) {
           const store = db.createObjectStore("documents", { keyPath: "id" });
-          store.createIndex("by_source_url", "source_url", { unique: false });
-        } else if (oldVersion < 2) {
+          store.createIndex("by_job_id", "job_id", { unique: false });
+          store.createIndex("by_page_url", "page_url", { unique: false });
+        } else {
           const store = transaction.objectStore("documents");
-          if (!store.indexNames.contains("by_source_url")) {
-            store.createIndex("by_source_url", "source_url", { unique: false });
+          // The previous schema (v2) keyed sources by `source_url`.
+          // The job-grouping refactor in v3 replaces it with `job_id`
+          // and `page_url`. Drop the old index if present and add the
+          // new ones; pre-existing rows are wiped because their shape
+          // is incompatible — they would all collapse into one giant
+          // pseudo-job otherwise, which is worse than re-indexing.
+          // The string literal is intentional — DOMStringList#contains takes a
+          // free-form name; the typed index whitelist would (correctly) reject
+          // a deleted v2 index.
+          const legacyIndex = "by_source_url" as unknown as
+            | "by_job_id"
+            | "by_page_url";
+          if (store.indexNames.contains(legacyIndex)) {
+            store.deleteIndex(legacyIndex);
+          }
+          if (!store.indexNames.contains("by_job_id")) {
+            store.createIndex("by_job_id", "job_id", { unique: false });
+          }
+          if (!store.indexNames.contains("by_page_url")) {
+            store.createIndex("by_page_url", "page_url", { unique: false });
+          }
+          if (oldVersion < 3) {
+            // Wipe v2 rows so they get re-embedded under the new schema.
+            store.clear();
+            transaction.objectStore("embeddings").clear();
+            transaction.objectStore("meta").clear();
           }
         }
         if (!db.objectStoreNames.contains("embeddings"))
@@ -132,16 +158,18 @@ export async function countDocuments(): Promise<number> {
 }
 
 /**
- * Delete every chunk + embedding belonging to the given source URL.
- * Used by the Knowledge panel's "Remove" button.
+ * Delete every chunk + embedding belonging to the given ingestion job.
+ * Used by the Knowledge panel's "Remove" button. One job may span
+ * many page URLs (sitemap walk, RSS ingest), so this removes them all
+ * in a single transaction.
  */
-export async function deleteBySource(sourceUrl: string): Promise<number> {
+export async function deleteByJob(jobId: string): Promise<number> {
   const db = await getDb();
   const tx = db.transaction(["documents", "embeddings"], "readwrite");
   const docs = await tx
     .objectStore("documents")
-    .index("by_source_url")
-    .getAll(sourceUrl);
+    .index("by_job_id")
+    .getAll(jobId);
   for (const doc of docs) {
     await tx.objectStore("documents").delete(doc.id);
     await tx.objectStore("embeddings").delete(doc.id);
@@ -151,17 +179,18 @@ export async function deleteBySource(sourceUrl: string): Promise<number> {
 }
 
 /**
- * List every distinct source URL with its chunk count and most recent
- * indexing timestamp. Used by the Knowledge panel's source list.
+ * List every distinct ingestion job with its page count, chunk count,
+ * and most recent indexing timestamp. Used by the Knowledge panel.
  */
 export async function listSources(): Promise<IndexedSource[]> {
   const db = await getDb();
   const docs = await db.getAll("documents");
-  const map = new Map<string, IndexedSource>();
+  const map = new Map<string, IndexedSource & { _pages: Set<string> }>();
   for (const doc of docs) {
-    const existing = map.get(doc.source_url);
+    const existing = map.get(doc.job_id);
     if (existing) {
       existing.chunk_count += 1;
+      existing._pages.add(doc.page_url);
       if (
         doc.indexed_at &&
         (!existing.indexed_at || doc.indexed_at > existing.indexed_at)
@@ -169,19 +198,22 @@ export async function listSources(): Promise<IndexedSource[]> {
         existing.indexed_at = doc.indexed_at;
       }
     } else {
-      map.set(doc.source_url, {
-        source_url: doc.source_url,
-        source_label: doc.source_label,
+      map.set(doc.job_id, {
+        job_id: doc.job_id,
+        job_root_url: doc.job_root_url,
+        job_label: doc.job_label,
+        job_kind: doc.job_kind,
+        page_count: 0, // filled in below from _pages
         chunk_count: 1,
-        source_type: doc.source_type,
         bias: doc.bias,
         indexed_at: doc.indexed_at,
+        _pages: new Set([doc.page_url]),
       });
     }
   }
-  return Array.from(map.values()).sort((a, b) =>
-    (b.indexed_at ?? 0) - (a.indexed_at ?? 0),
-  );
+  return Array.from(map.values())
+    .map(({ _pages, ...rest }) => ({ ...rest, page_count: _pages.size }))
+    .sort((a, b) => (b.indexed_at ?? 0) - (a.indexed_at ?? 0));
 }
 
 function cosine(a: number[], b: number[]): number {

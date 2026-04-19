@@ -26,32 +26,79 @@ export interface ChatTurn {
  */
 export type Bias = "core" | "knots" | "neutral";
 
+/**
+ * Kind of ingestion that produced a chunk. Used by the Knowledge UI
+ * to group chunks by the *job* the user submitted (a single page,
+ * a sitemap walk, an RSS/Atom feed pull, the seed corpus, or the
+ * Bitcoin bundle), rather than by the per-page URL.
+ */
+export type JobKind =
+  | "page"
+  | "sitemap"
+  | "rss"
+  | "seed"
+  | "bitcoin-bundle";
+
 export interface KbChunk {
   id: string;
-  source_url: string;
-  source_label: string;
+
+  /**
+   * Identifier of the ingestion *job* that produced this chunk. All
+   * pages discovered through the same sitemap or feed share a job_id;
+   * a single-page ingest creates a job_id of its own. Used as the
+   * grouping key in the Knowledge panel.
+   */
+  job_id: string;
+
+  /**
+   * The URL the user submitted (page URL, sitemap URL, or feed URL).
+   * Stored alongside the per-chunk page_url so that "remove this
+   * source" semantics can act on the whole job.
+   */
+  job_root_url: string;
+
+  /** Human-readable label for the job ("Bitcoin Optech RSS feed"). */
+  job_label: string;
+
+  /** What kind of ingestion this chunk came from. */
+  job_kind: JobKind;
+
+  /** URL of the actual page this chunk was extracted from. */
+  page_url: string;
+
+  /** Title of the page this chunk was extracted from. */
+  page_label: string;
+
+  /** Position of this chunk within its page. */
   chunk_index: number;
+
   text: string;
+
   /** Optional bias tag; absent on legacy chunks (treated as 'neutral'). */
   bias?: Bias;
-  /** Optional grouping for "Knowledge" UI: which ingested source bundle it came from. */
-  source_type?: "seed" | "user-page" | "user-sitemap" | "bitcoin-bundle";
+
   /** Unix ms when the chunk was indexed. */
   indexed_at?: number;
 }
 
-/** Aggregate stats per source_url, used by the Knowledge panel. */
+/**
+ * Aggregate stats per ingestion *job*, used by the Knowledge panel.
+ * One row per `job_id`.
+ */
 export interface IndexedSource {
-  source_url: string;
-  source_label: string;
+  job_id: string;
+  job_root_url: string;
+  job_label: string;
+  job_kind: JobKind;
+  page_count: number;
   chunk_count: number;
-  source_type?: KbChunk["source_type"];
   bias?: Bias;
+  /** Most recent `indexed_at` across all chunks in the job. */
   indexed_at?: number;
 }
 
 export interface IngestProgress {
-  /** Pages discovered (1 for single-page mode, N for sitemap). */
+  /** Pages discovered (1 for single-page mode, N for sitemap/RSS). */
   total_pages: number;
   /** Pages whose extraction + chunking + embedding finished. */
   done_pages: number;

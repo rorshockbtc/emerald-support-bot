@@ -1,7 +1,11 @@
-import { ingestExtract, ingestSitemap } from "@workspace/api-client-react";
+import {
+  ingestExtract,
+  ingestRss,
+  ingestSitemap,
+} from "@workspace/api-client-react";
 import { chunkText } from "./chunker";
 import { putChunkWithVector } from "./vectorStore";
-import type { Bias, IngestProgress, KbChunk } from "./types";
+import type { Bias, IngestProgress, JobKind, KbChunk } from "./types";
 
 /**
  * Ingestion orchestrator. Lives in the main thread because it needs the
@@ -22,36 +26,59 @@ import type { Bias, IngestProgress, KbChunk } from "./types";
 
 export type EmbedFn = (text: string) => Promise<number[]>;
 
+/**
+ * Ingestion modes. `page` indexes a single URL; `sitemap` walks an
+ * XML sitemap (or sitemap index); `rss` walks an RSS 2.0 or Atom 1.0
+ * feed. All three produce one "job" in the Knowledge panel — sitemap
+ * and rss may produce many pages but appear as a single ingest unit
+ * the user can remove with one click.
+ */
+export type IngestMode = "page" | "sitemap" | "rss";
+
 export interface IngestOptions {
   url: string;
-  mode: "page" | "sitemap";
+  mode: IngestMode;
   bias?: Bias;
   /** Called between each step so the UI can show a live counter. */
   onProgress?: (p: IngestProgress) => void;
-  /** Cap on pages indexed when mode === 'sitemap'. */
+  /** Cap on pages indexed when mode is sitemap or rss. */
   maxPages?: number;
 }
 
 export interface IngestResult {
+  job_id: string;
   pages_indexed: number;
   chunks_indexed: number;
 }
 
-function chunkId(sourceUrl: string, index: number): string {
-  // Stable ID so re-indexing the same URL overwrites prior chunks.
-  return `${sourceUrl}#${index}`;
+function chunkId(jobId: string, pageUrl: string, index: number): string {
+  // Stable ID so re-running the same job with the same URLs overwrites
+  // prior chunks rather than duplicating them.
+  return `${jobId}::${pageUrl}#${index}`;
+}
+
+function newJobId(): string {
+  // Small UUID; collision risk is irrelevant per browser.
+  return crypto.randomUUID();
+}
+
+interface JobMeta {
+  job_id: string;
+  job_root_url: string;
+  job_label: string;
+  job_kind: JobKind;
 }
 
 async function indexSinglePage(
-  url: string,
+  pageUrl: string,
   bias: Bias,
-  sourceType: KbChunk["source_type"],
+  job: JobMeta,
   embed: EmbedFn,
   emit: (n: number) => void,
-): Promise<{ chunks: number; label: string }> {
-  const extracted = await ingestExtract({ url });
+): Promise<{ chunks: number; pageLabel: string }> {
+  const extracted = await ingestExtract({ url: pageUrl });
   const chunks = chunkText(extracted.contentText);
-  const label =
+  const pageLabel =
     extracted.title?.trim() ||
     new URL(extracted.url).hostname + new URL(extracted.url).pathname;
   const indexedAt = Date.now();
@@ -59,20 +86,36 @@ async function indexSinglePage(
     const vec = await embed(ch.text);
     await putChunkWithVector(
       {
-        id: chunkId(extracted.url, ch.chunk_index),
-        source_url: extracted.url,
-        source_label: label,
+        id: chunkId(job.job_id, extracted.url, ch.chunk_index),
+        job_id: job.job_id,
+        job_root_url: job.job_root_url,
+        job_label: job.job_label,
+        job_kind: job.job_kind,
+        page_url: extracted.url,
+        page_label: pageLabel,
         chunk_index: ch.chunk_index,
         text: ch.text,
         bias,
-        source_type: sourceType,
         indexed_at: indexedAt,
-      },
+      } satisfies KbChunk,
       vec,
     );
     emit(1);
   }
-  return { chunks: chunks.length, label };
+  return { chunks: chunks.length, pageLabel };
+}
+
+function jobLabelFromUrl(url: string, kind: JobKind): string {
+  try {
+    const u = new URL(url);
+    const suffix =
+      kind === "sitemap" ? " (sitemap)"
+      : kind === "rss" ? " (feed)"
+      : "";
+    return `${u.hostname}${u.pathname === "/" ? "" : u.pathname}${suffix}`;
+  } catch {
+    return url;
+  }
 }
 
 export async function ingestUrl(
@@ -82,6 +125,13 @@ export async function ingestUrl(
   const bias: Bias = options.bias ?? "neutral";
   const onProgress = options.onProgress ?? (() => undefined);
   const maxPages = options.maxPages ?? 200;
+
+  const job: JobMeta = {
+    job_id: newJobId(),
+    job_root_url: options.url,
+    job_kind: options.mode,
+    job_label: jobLabelFromUrl(options.url, options.mode),
+  };
 
   const progress: IngestProgress = {
     total_pages: options.mode === "page" ? 1 : 0,
@@ -93,12 +143,16 @@ export async function ingestUrl(
   onProgress(progress);
 
   try {
-    const pageUrls: string[] =
-      options.mode === "page"
-        ? [options.url]
-        : await ingestSitemap({ url: options.url }).then((res) =>
-            res.urls.slice(0, maxPages),
-          );
+    let pageUrls: string[];
+    if (options.mode === "page") {
+      pageUrls = [options.url];
+    } else if (options.mode === "sitemap") {
+      const res = await ingestSitemap({ url: options.url });
+      pageUrls = res.urls.slice(0, maxPages);
+    } else {
+      const res = await ingestRss({ url: options.url });
+      pageUrls = res.urls.slice(0, maxPages);
+    }
 
     progress.total_pages = pageUrls.length;
     progress.stage = "extracting";
@@ -112,27 +166,19 @@ export async function ingestUrl(
       progress.stage = "extracting";
       onProgress({ ...progress });
       try {
-        const { chunks } = await indexSinglePage(
-          pageUrl,
-          bias,
-          options.mode === "page" ? "user-page" : "user-sitemap",
-          embed,
-          (n) => {
-            totalChunks += n;
-            progress.done_chunks = totalChunks;
-            progress.stage = "embedding";
-            onProgress({ ...progress });
-          },
-        );
+        await indexSinglePage(pageUrl, bias, job, embed, (n) => {
+          totalChunks += n;
+          progress.done_chunks = totalChunks;
+          progress.stage = "embedding";
+          onProgress({ ...progress });
+        });
         pagesDone += 1;
         progress.done_pages = pagesDone;
         progress.done_chunks = totalChunks;
         onProgress({ ...progress });
-        // chunks variable also tracked through the emit callback
-        void chunks;
       } catch (err) {
-        // Soft-fail individual pages on a sitemap walk so one 502 does
-        // not abort a multi-hundred-page index. Single-page mode does
+        // Soft-fail individual pages on a multi-page walk so one 502
+        // does not abort a hundred-page index. Single-page mode does
         // re-throw because the user is watching one URL.
         if (options.mode === "page") throw err;
         // eslint-disable-next-line no-console
@@ -143,7 +189,11 @@ export async function ingestUrl(
     progress.stage = "complete";
     progress.current_url = undefined;
     onProgress({ ...progress });
-    return { pages_indexed: pagesDone, chunks_indexed: totalChunks };
+    return {
+      job_id: job.job_id,
+      pages_indexed: pagesDone,
+      chunks_indexed: totalChunks,
+    };
   } catch (err) {
     progress.stage = "error";
     progress.error = (err as Error).message;

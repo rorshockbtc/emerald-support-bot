@@ -136,7 +136,30 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SitemapResponse"
+                $ref: "#/components/schemas/DiscoveredUrls"
+  /ingest/rss:
+    post:
+      operationId: ingestRss
+      tags: [ingest]
+      summary: Fetch and parse an RSS or Atom feed into a flat list of entry URLs
+      description: |
+        Mirrors `/ingest/sitemap` for syndication feeds. Accepts RSS 2.0 and
+        Atom 1.0 documents; returns the link of each entry in document order.
+        Useful for blog-style sources (Bitcoin Optech, project-news feeds)
+        where there is no sitemap.xml.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RssRequest"
+      responses:
+        "200":
+          description: Feed entry URL list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveredUrls"
   /escalate:
     post:
       operationId: escalateTicket
@@ -284,10 +307,21 @@ components:
           format: uri
       required:
         - url
-    SitemapResponse:
+    RssRequest:
       type: object
       properties:
-        sitemapUrl:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
+    DiscoveredUrls:
+      type: object
+      description: |
+        Common response shape for any URL-discovery ingest endpoint
+        (sitemap, RSS/Atom). `sourceUrl` echoes the input feed/sitemap.
+      properties:
+        sourceUrl:
           type: string
         urls:
           type: array
@@ -296,7 +330,7 @@ components:
         truncated:
           type: boolean
       required:
-        - sitemapUrl
+        - sourceUrl
         - urls
         - truncated
     SourceReference:

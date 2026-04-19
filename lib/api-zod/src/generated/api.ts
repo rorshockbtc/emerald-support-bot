@@ -35,7 +35,7 @@ export const ListArticlesResponseItem = zod.object({
   category: zod.string(),
   sourceUrl: zod.string(),
   trustScore: zod.number(),
-  lastUpdated: zod.date(),
+  lastUpdated: zod.coerce.date(),
 });
 export const ListArticlesResponse = zod.array(ListArticlesResponseItem);
 
@@ -54,7 +54,7 @@ export const GetArticleResponse = zod.object({
   category: zod.string(),
   sourceUrl: zod.string(),
   trustScore: zod.number(),
-  lastUpdated: zod.date(),
+  lastUpdated: zod.coerce.date(),
 });
 
 /**
@@ -80,7 +80,7 @@ export const SendMessageResponse = zod.object({
     }),
   ),
   ciBreakdown: zod.string(),
-  lastUpdated: zod.date(),
+  lastUpdated: zod.coerce.date(),
   relatedArticles: zod
     .array(
       zod.object({
@@ -91,7 +91,7 @@ export const SendMessageResponse = zod.object({
         category: zod.string(),
         sourceUrl: zod.string(),
         trustScore: zod.number(),
-        lastUpdated: zod.date(),
+        lastUpdated: zod.coerce.date(),
       }),
     )
     .optional(),
@@ -116,7 +116,7 @@ export const IngestExtractResponse = zod.object({
   contentText: zod.string(),
   contentHtml: zod.string().nullish(),
   length: zod.number(),
-  fetchedAt: zod.date(),
+  fetchedAt: zod.coerce.date(),
   warning: zod.string().nullish(),
 });
 
@@ -127,11 +127,37 @@ export const IngestSitemapBody = zod.object({
   url: zod.string().url(),
 });
 
-export const IngestSitemapResponse = zod.object({
-  sitemapUrl: zod.string(),
-  urls: zod.array(zod.string()),
-  truncated: zod.boolean(),
+export const IngestSitemapResponse = zod
+  .object({
+    sourceUrl: zod.string(),
+    urls: zod.array(zod.string()),
+    truncated: zod.boolean(),
+  })
+  .describe(
+    "Common response shape for any URL-discovery ingest endpoint\n(sitemap, RSS\/Atom). `sourceUrl` echoes the input feed\/sitemap.\n",
+  );
+
+/**
+ * Mirrors `/ingest/sitemap` for syndication feeds. Accepts RSS 2.0 and
+Atom 1.0 documents; returns the link of each entry in document order.
+Useful for blog-style sources (Bitcoin Optech, project-news feeds)
+where there is no sitemap.xml.
+
+ * @summary Fetch and parse an RSS or Atom feed into a flat list of entry URLs
+ */
+export const IngestRssBody = zod.object({
+  url: zod.string().url(),
 });
+
+export const IngestRssResponse = zod
+  .object({
+    sourceUrl: zod.string(),
+    urls: zod.array(zod.string()),
+    truncated: zod.boolean(),
+  })
+  .describe(
+    "Common response shape for any URL-discovery ingest endpoint\n(sitemap, RSS\/Atom). `sourceUrl` echoes the input feed\/sitemap.\n",
+  );
 
 /**
  * Generates a Zendesk-formatted support ticket payload
@@ -144,7 +170,7 @@ export const EscalateTicketBody = zod.object({
     zod.object({
       role: zod.string(),
       content: zod.string(),
-      timestamp: zod.date(),
+      timestamp: zod.coerce.date(),
     }),
   ),
 });
