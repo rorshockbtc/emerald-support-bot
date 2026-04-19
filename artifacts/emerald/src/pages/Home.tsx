@@ -9,10 +9,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import heroImage from "@/assets/greater-hero.png";
 
 export default function Home() {
-  // Pass null so the rich static <title> from index.html
-  // ("Greater — sovereign support bots, FOSS by default") survives
-  // SPA navigation back to /, instead of getting truncated to just
-  // "Greater".
+  // Preserve the static index.html <title> on /.
   useDocumentTitle(null);
   return (
     <>
@@ -191,11 +188,6 @@ function PrinciplesStrip() {
             </h2>
           </div>
 
-          {/*
-            Margin-note caveat — anti-AI cue. Real <aside> in the DOM,
-            slightly rotated, hand-written tone. The kind of thing a
-            person writes and a generator does not.
-          */}
           <aside
             className="self-start lg:self-end max-w-xs text-[12px] leading-snug text-muted-foreground italic px-3 py-2 border-l-2 border-pink-500/60 bg-pink-500/5 rounded-r-md"
             style={{ transform: "rotate(-0.6deg)" }}
