@@ -96,9 +96,18 @@ export function ChatWidget({
    * call shows the notice; subsequent ones silently route to local.
    */
   const cloudCapNoticeShownRef = useRef<boolean>(false);
-  const [messages, setMessages] = useState<MessageProps[]>([
+  /**
+   * Stable id of the seeded welcome message. The widget always
+   * injects a welcome turn (with or without the `welcomeMessage`
+   * prop), and we need to be able to exclude it from "real turn"
+   * counts and from the persisted ticket transcript without relying
+   * on prop-presence as a proxy. Captured once at mount via the
+   * `useState` initializer so it stays stable across re-renders.
+   */
+  const welcomeMessageIdRef = useRef<string>(uuidv4());
+  const [messages, setMessages] = useState<MessageProps[]>(() => [
     {
-      id: uuidv4(),
+      id: welcomeMessageIdRef.current,
       role: 'bot',
       content:
         welcomeMessage ??
@@ -106,7 +115,7 @@ export function ChatWidget({
       timestamp: new Date(),
       trustScore: 0.99,
       ciBreakdown: "System initialization verified.",
-    }
+    },
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -150,24 +159,43 @@ export function ChatWidget({
   }, [messages, chatMutation.isPending, isLocalGenerating]);
 
   /**
-   * Persist the current transcript to sessionStorage on every change
-   * so the support-ticket preview screen at `/demo/<slug>/ticket`
-   * has something to read. We store only user/bot turns (mode notes
-   * and the welcome are excluded — they aren't helpful in a ticket).
-   * Skipped entirely when the host page didn't supply `routeSlug`,
-   * which keeps the storage key honest about what produced it.
+   * "Real" turns: user/bot only, mode-notes excluded, and the
+   * seeded welcome explicitly dropped by id. We key off the
+   * captured welcome id rather than `welcomeMessage` prop presence
+   * so the gating works identically on demos that supply the prop
+   * (PersonaDemoShell) and demos that rely on the default
+   * (BlockstreamDemo). Memoised so it can be a stable useEffect dep
+   * for the transcript-persistence effect.
+   */
+  const realTurns = React.useMemo(
+    () =>
+      messages.filter(
+        (m) =>
+          m.id !== welcomeMessageIdRef.current &&
+          !m.isModeNote &&
+          (m.role === 'user' || m.role === 'bot'),
+      ),
+    [messages],
+  );
+  const userTurnCount = realTurns.filter((m) => m.role === 'user').length;
+  const botTurnCount = realTurns.filter((m) => m.role === 'bot').length;
+  const ticketPreviewEnabled =
+    !!routeSlug && userTurnCount >= 1 && botTurnCount >= 1;
+
+  /**
+   * Persist the redacted-eligible transcript to sessionStorage on
+   * every real-turn change so the support-ticket preview screen at
+   * `/demo/<slug>/ticket` has something to read. Skipped when the
+   * host page didn't supply `routeSlug` (keeps the storage key
+   * honest about what produced it).
    */
   useEffect(() => {
     if (!routeSlug || !personaSlug || !personaBrand) return;
-    const turns = messages
-      .filter((m) => (m.role === 'user' || m.role === 'bot') && !m.isModeNote)
-      // Drop the boilerplate welcome — the agent doesn't need it.
-      .slice(welcomeMessage ? 1 : 0)
-      .map((m) => ({
-        role: m.role as 'user' | 'bot',
-        content: m.content,
-        timestamp: m.timestamp.toISOString(),
-      }));
+    const turns = realTurns.map((m) => ({
+      role: m.role as 'user' | 'bot',
+      content: m.content,
+      timestamp: m.timestamp.toISOString(),
+    }));
     if (!turns.length) return;
     saveTranscript({
       updatedAt: new Date().toISOString(),
@@ -180,31 +208,15 @@ export function ChatWidget({
       turns,
     });
   }, [
-    messages,
+    realTurns,
     routeSlug,
     personaSlug,
     personaBrand,
     sessionId,
-    welcomeMessage,
     pipe.pipe,
     pipe.activeBiasId,
     activeBiasOption?.label,
   ]);
-
-  /**
-   * The "Show what would have been escalated" item is only useful
-   * after the visitor has had at least one back-and-forth (≥1 user
-   * message AND ≥1 non-welcome bot reply). Anything earlier and the
-   * preview is just the welcome line, which doesn't sell the pitch.
-   */
-  const realTurns = messages.filter(
-    (m) => !m.isModeNote && (m.role === 'user' || m.role === 'bot'),
-  );
-  const userTurnCount = realTurns.filter((m) => m.role === 'user').length;
-  const nonWelcomeBotCount =
-    realTurns.filter((m) => m.role === 'bot').length - (welcomeMessage ? 1 : 0);
-  const ticketPreviewEnabled =
-    !!routeSlug && userTurnCount >= 1 && nonWelcomeBotCount >= 1;
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
