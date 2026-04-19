@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Layout } from "@/components/Layout";
 import { ContactProvider } from "@/components/ContactContext";
+import { LLMProvider } from "@/llm/LLMProvider";
 import Home from "@/pages/Home";
 import About from "@/pages/About";
 import OpenClaw from "@/pages/OpenClaw";
@@ -43,11 +44,17 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <ContactProvider>
-          <Router />
-        </ContactProvider>
-      </WouterRouter>
+      {/* LLMProvider sits ABOVE the router so SPA navigations never
+          re-trigger model download. The worker, the readiness state,
+          and the IndexedDB-cached vector index all persist for the
+          whole SPA session. */}
+      <LLMProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <ContactProvider>
+            <Router />
+          </ContactProvider>
+        </WouterRouter>
+      </LLMProvider>
       <Toaster />
     </QueryClientProvider>
   );

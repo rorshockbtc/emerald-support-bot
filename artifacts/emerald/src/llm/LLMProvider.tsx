@@ -1,0 +1,327 @@
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type {
+  ChatTurn,
+  EmbedResult,
+  GenerateResult,
+  LocalAnswer,
+  ModelInfo,
+  ModelStatus,
+  RetrievedChunk,
+  ThoughtTrace,
+  WorkerOutbound,
+} from "./types";
+import {
+  EMBEDDER_MODEL_ID,
+  LLM_MODEL_ID,
+} from "./llmWorker";
+import { SEED_CORPUS } from "./seedCorpus";
+import {
+  clearAll,
+  countDocuments,
+  getCorpusMeta,
+  putChunkWithVector,
+  setCorpusMeta,
+  topK,
+} from "./vectorStore";
+
+const SEED_CORPUS_VERSION = "v1-seed-blockstream";
+
+/**
+ * Top-level LLM provider. MUST be mounted above the router so that
+ * SPA navigations do not unmount it (and therefore do not re-trigger
+ * model download). Worker download begins after first paint via a
+ * deferred startup so the page itself stays interactive.
+ */
+
+interface LLMContextValue {
+  status: ModelStatus;
+  /** Granular load progress (0..100) for the active stage. -1 if unknown. */
+  progress: number;
+  loadStageLabel: string;
+  errorMessage: string | null;
+  modelInfo: ModelInfo;
+  /**
+   * Run a full RAG turn locally: embed the user message, retrieve top-K
+   * chunks from IndexedDB, generate a grounded reply, return the reply
+   * with the chunks that were actually used (for the thought trace).
+   * Throws if the local model is not ready — callers should check
+   * `status === "ready"` first and fall back to cloud otherwise.
+   */
+  ask: (history: ChatTurn[], userMessage: string) => Promise<LocalAnswer>;
+  clearCacheAndReload: () => Promise<void>;
+}
+
+const LLMContext = createContext<LLMContextValue | null>(null);
+
+const APPROX_SIZE_MB = 830; // ~30MB embedder + ~800MB LLM q4f16
+
+export function LLMProvider({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<ModelStatus>("idle");
+  const [progress, setProgress] = useState<number>(0);
+  const [loadStageLabel, setLoadStageLabel] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
+
+  const workerRef = useRef<Worker | null>(null);
+  const pendingRef = useRef<
+    Map<string, { resolve: (v: any) => void; reject: (e: Error) => void }>
+  >(new Map());
+  const embedderReadyRef = useRef(false);
+
+  const ensureSeedCorpus = useCallback(async () => {
+    const meta = await getCorpusMeta();
+    const count = await countDocuments();
+    if (
+      meta &&
+      meta.version === SEED_CORPUS_VERSION &&
+      meta.embedderName === EMBEDDER_MODEL_ID &&
+      count === SEED_CORPUS.length
+    ) {
+      return;
+    }
+    // Re-embed everything (cache schema changed or first run).
+    await clearAll();
+    for (const chunk of SEED_CORPUS) {
+      const vec = await callWorker<number[]>("embed", { text: chunk.text });
+      await putChunkWithVector(chunk, vec);
+    }
+    await setCorpusMeta(
+      SEED_CORPUS_VERSION,
+      EMBEDDER_MODEL_ID,
+      SEED_CORPUS.length,
+    );
+  }, []);
+
+  const callWorker = useCallback(
+    <T,>(
+      type: "embed" | "generate",
+      payload: { text?: string; messages?: ChatTurn[]; maxNewTokens?: number },
+    ): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const w = workerRef.current;
+        if (!w) return reject(new Error("Worker not initialized"));
+        const id = crypto.randomUUID();
+        pendingRef.current.set(id, {
+          resolve: resolve as (v: any) => void,
+          reject,
+        });
+        if (type === "embed") {
+          w.postMessage({ type: "embed", id, text: payload.text });
+        } else {
+          w.postMessage({
+            type: "generate",
+            id,
+            messages: payload.messages,
+            maxNewTokens: payload.maxNewTokens,
+          });
+        }
+      });
+    },
+    [],
+  );
+
+  const startWorker = useCallback(() => {
+    // Browsers without WebGPU permanently use cloud fallback.
+    if (typeof navigator === "undefined" || !("gpu" in navigator)) {
+      setStatus("unsupported");
+      return;
+    }
+    if (workerRef.current) return; // already started
+
+    try {
+      const w = new Worker(
+        new URL("./llmWorker.ts", import.meta.url),
+        { type: "module" },
+      );
+      workerRef.current = w;
+
+      w.onmessage = async (e: MessageEvent<WorkerOutbound>) => {
+        const msg = e.data;
+        if (msg.type === "progress") {
+          setStatus(
+            msg.stage === "embedder" ? "loading-embedder" : "loading-llm",
+          );
+          setProgress(typeof msg.progress === "number" ? msg.progress : -1);
+          setLoadStageLabel(
+            msg.stage === "embedder"
+              ? `Embedder · ${msg.status ?? "downloading"}`
+              : `LLM · ${msg.status ?? "downloading"}`,
+          );
+        } else if (msg.type === "ready") {
+          if (msg.stage === "embedder") {
+            embedderReadyRef.current = true;
+            // Build the seed-corpus vector index in the background while
+            // the LLM is still downloading. Embedding 20 chunks is fast.
+            ensureSeedCorpus().catch((err) => {
+              console.error("Seed corpus indexing failed:", err);
+            });
+          } else if (msg.stage === "all") {
+            setStatus("ready");
+            setProgress(100);
+            setLoadStageLabel("");
+            setLoadedAt(new Date());
+          }
+        } else if (msg.type === "error") {
+          if (msg.id && pendingRef.current.has(msg.id)) {
+            pendingRef.current.get(msg.id)!.reject(new Error(msg.message));
+            pendingRef.current.delete(msg.id);
+          } else {
+            setStatus("error");
+            setErrorMessage(msg.message);
+          }
+        } else if (msg.type === "embedResult") {
+          const p = pendingRef.current.get(msg.id);
+          if (p) {
+            p.resolve((msg as EmbedResult).vector);
+            pendingRef.current.delete(msg.id);
+          }
+        } else if (msg.type === "generateResult") {
+          const p = pendingRef.current.get(msg.id);
+          if (p) {
+            p.resolve((msg as GenerateResult).text);
+            pendingRef.current.delete(msg.id);
+          }
+        }
+      };
+      w.onerror = (e) => {
+        setStatus("error");
+        setErrorMessage(e.message || "Worker crashed");
+      };
+      w.postMessage({ type: "init" });
+      setStatus("loading-embedder");
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage((err as Error).message);
+    }
+  }, [ensureSeedCorpus]);
+
+  // Kick off the worker after first paint so the page stays interactive
+  // through the model download.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const idle = (window as any).requestIdleCallback as
+      | undefined
+      | ((cb: () => void, opts?: { timeout: number }) => number);
+    const handle = idle
+      ? idle(() => startWorker(), { timeout: 1500 })
+      : window.setTimeout(() => startWorker(), 250);
+    return () => {
+      const cancelIdle = (window as any).cancelIdleCallback as
+        | undefined
+        | ((h: number) => void);
+      if (idle && cancelIdle) cancelIdle(handle as number);
+      else window.clearTimeout(handle as number);
+    };
+  }, [startWorker]);
+
+  const ask = useCallback<LLMContextValue["ask"]>(
+    async (history, userMessage) => {
+      if (status !== "ready") {
+        throw new Error("Local model not ready");
+      }
+      const queryVec = await callWorker<number[]>("embed", {
+        text: userMessage,
+      });
+      const retrieved = await topK(queryVec, 5);
+      const context = formatRetrievedForPrompt(retrieved);
+
+      const systemPrompt = [
+        "You are Greater, a support assistant for Blockstream products and",
+        "Bitcoin self-custody. Answer ONLY from the provided knowledge",
+        "snippets. If the snippets do not contain the answer, say so",
+        "plainly and suggest opening a support ticket. Never ask for the",
+        "user's seed phrase, PIN, or password — refuse if requested.",
+        "",
+        "Knowledge snippets:",
+        context,
+      ].join("\n");
+
+      const messages: ChatTurn[] = [
+        { role: "system", content: systemPrompt },
+        ...history.slice(-6),
+        { role: "user", content: userMessage },
+      ];
+
+      const text = await callWorker<string>("generate", {
+        messages,
+        maxNewTokens: 384,
+      });
+
+      const trace: ThoughtTrace = {
+        chunks: retrieved,
+        reasoning: summarizeRetrieval(retrieved),
+      };
+      return { text, source: "local", thoughtTrace: trace };
+    },
+    [status, callWorker],
+  );
+
+  const clearCacheAndReload = useCallback(async () => {
+    await clearAll();
+    // Best-effort: clear the OPFS-backed Transformers.js cache too.
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((k) => k.includes("transformers") || k.includes("hf"))
+          .map((k) => caches.delete(k)),
+      );
+    }
+    // We deliberately do not touch OPFS here — Transformers.js v3 owns
+    // its own cache in OPFS and the safe way to invalidate it is to let
+    // the library re-resolve on next load with a cleared Cache Storage.
+    window.location.reload();
+  }, []);
+
+  const modelInfo: ModelInfo = useMemo(
+    () => ({
+      llmName: LLM_MODEL_ID,
+      llmQuantization: "q4f16 · WebGPU",
+      embedderName: EMBEDDER_MODEL_ID,
+      approxSizeMb: APPROX_SIZE_MB,
+      loadedAt,
+    }),
+    [loadedAt],
+  );
+
+  const value: LLMContextValue = {
+    status,
+    progress,
+    loadStageLabel,
+    errorMessage,
+    modelInfo,
+    ask,
+    clearCacheAndReload,
+  };
+
+  return <LLMContext.Provider value={value}>{children}</LLMContext.Provider>;
+}
+
+export function useLLM(): LLMContextValue {
+  const ctx = useContext(LLMContext);
+  if (!ctx) throw new Error("useLLM must be used inside <LLMProvider>");
+  return ctx;
+}
+
+function formatRetrievedForPrompt(chunks: RetrievedChunk[]): string {
+  return chunks
+    .map(
+      (c, i) =>
+        `[${i + 1}] ${c.source_label} (${c.source_url})\n${c.text}`,
+    )
+    .join("\n\n");
+}
+
+function summarizeRetrieval(chunks: RetrievedChunk[]): string {
+  if (chunks.length === 0) return "No relevant chunks were found in the corpus.";
+  const top = chunks[0];
+  return `Retrieved ${chunks.length} chunks; top match was "${top.source_label}" (similarity ${top.score.toFixed(3)}).`;
+}

@@ -16,7 +16,7 @@ This repository was originally `emerald-support-bot` — a Blockstream-specific 
 |------|--------|
 | Greater shell (landing, six personas, case studies, contact form) | ✅ Live |
 | Blockstream / FinTech live demo | ✅ Live (ported from Emerald) |
-| Browser-local LLM (WebGPU + Transformers.js) | 🚧 In progress |
+| Browser-local LLM (WebGPU + Transformers.js) | ✅ Wired (Llama-3.2-1B-Instruct q4f16 + bge-small-en-v1.5, IndexedDB vector store, thought-trace UI, cloud fallback) |
 | Generic web-scraping ingestion | 🚧 Planned |
 | Bitcoin knowledge ingestion (Core/Knots/OpTech/BitcoinTalk) with bias toggle | 🚧 Planned |
 | Pipes.pink integration (proprietary persona weights) | 🚧 Stubbed (gitignored) |
@@ -42,6 +42,12 @@ greater/
 │       │   │   ├── ContactFormModal.tsx  Web3Forms direct-POST contact form
 │       │   │   ├── ChatWidget.tsx        Blockstream demo chat widget
 │       │   │   └── ...
+│       │   ├── llm/                      Browser-local LLM stack
+│       │   │   ├── llmWorker.ts          Web Worker — Transformers.js (WebGPU)
+│       │   │   ├── LLMProvider.tsx       Mounted above router; persists across nav
+│       │   │   ├── vectorStore.ts        IndexedDB-backed cosine-sim retriever
+│       │   │   ├── seedCorpus.ts         Hand-curated Bitcoin/Blockstream chunks
+│       │   │   └── ModelInfoPopover.tsx  (i) popover + cache-clear control
 │       │   ├── data/
 │       │   │   └── personas.ts           Single source of truth for the 6 bots
 │       │   └── index.css                 CHB design system tokens

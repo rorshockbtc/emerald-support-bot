@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon } from 'lucide-react';
+import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
 import { ChatMessage, type MessageProps } from './ChatMessage';
 import { SecurityPanel } from './SecurityPanel';
+import { ModelInfoPopover } from '@/llm/ModelInfoPopover';
+import { useLLM } from '@/llm/LLMProvider';
 import { useToast } from '@/hooks/use-toast';
-import { cn, formatTime } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import type { ChatTurn, CloudReason, ModelStatus } from '@/llm/types';
 
 function uuidv4() {
   return crypto.randomUUID();
@@ -19,11 +22,12 @@ export function ChatWidget() {
   const [input, setInput] = useState('');
   const [showSecurityPanel, setShowSecurityPanel] = useState(false);
   const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
+  const [isLocalGenerating, setIsLocalGenerating] = useState(false);
   const [messages, setMessages] = useState<MessageProps[]>([
     {
       id: uuidv4(),
       role: 'bot',
-      content: "Hello! I'm Blockstream AI assistant. What can I help you with?",
+      content: "Hello! I'm Greater's Blockstream support bot. Ask me about Jade, Green, hardware-wallet recovery, fees, or self-custody.",
       timestamp: new Date(),
       trustScore: 0.99,
       ciBreakdown: "System initialization verified.",
@@ -36,10 +40,11 @@ export function ChatWidget() {
 
   const chatMutation = useSendMessage();
   const escalateMutation = useEscalateTicket();
+  const llm = useLLM();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, chatMutation.isPending]);
+  }, [messages, chatMutation.isPending, isLocalGenerating]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -47,8 +52,10 @@ export function ChatWidget() {
     }
   }, [isOpen]);
 
+  const isPending = chatMutation.isPending || isLocalGenerating;
+
   const handleSend = async () => {
-    if (!input.trim() || chatMutation.isPending) return;
+    if (!input.trim() || isPending) return;
 
     const userText = input.trim();
     setInput('');
@@ -59,11 +66,56 @@ export function ChatWidget() {
       content: userText,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
 
+    // Local-first when ready; cloud fallback otherwise. The label on
+    // the response always says which path served it.
+    if (llm.status === 'ready') {
+      setIsLocalGenerating(true);
+      try {
+        const history: ChatTurn[] = messages
+          .filter((m) => m.role === 'user' || m.role === 'bot')
+          .map((m) => ({
+            role: m.role === 'bot' ? 'assistant' : 'user',
+            content: m.content,
+          }));
+        const answer = await llm.ask(history, userText);
+        const botMsg: MessageProps = {
+          id: uuidv4(),
+          role: 'bot',
+          content: answer.text,
+          timestamp: new Date(),
+          trustScore: 0.96,
+          ciBreakdown: 'Local inference · WebGPU · grounded in retrieved chunks.',
+          responseSource: 'local',
+          thoughtTrace: answer.thoughtTrace,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+      } catch (err) {
+        // Local failed — surface as cloud fallback rather than silently
+        // failing. Keep behavior honest.
+        console.error('Local inference failed, falling back to cloud:', err);
+        await sendViaCloud(userText, 'local-error');
+      } finally {
+        setIsLocalGenerating(false);
+      }
+      return;
+    }
+
+    // Pick the most accurate reason for using cloud right now.
+    const reason: CloudReason =
+      llm.status === 'unsupported'
+        ? 'unsupported'
+        : llm.status === 'error'
+          ? 'local-error'
+          : 'loading';
+    await sendViaCloud(userText, reason);
+  };
+
+  const sendViaCloud = async (userText: string, cloudReason: CloudReason) => {
     try {
       const response = await chatMutation.mutateAsync({
-        data: { message: userText, sessionId }
+        data: { message: userText, sessionId },
       });
 
       if (response.isSecurityAlert) {
@@ -81,14 +133,22 @@ export function ChatWidget() {
         lastUpdated: response.lastUpdated,
         isFinancialAdvice: response.isFinancialAdvice,
         relatedArticles: response.relatedArticles,
+        responseSource: 'cloud',
+        cloudReason,
       };
 
-      setMessages(prev => [...prev, botMsg]);
+      setMessages((prev) => [...prev, botMsg]);
+      if (cloudReason === 'local-error') {
+        toast({
+          title: 'Used cloud fallback',
+          description: 'Local inference hit an error; this reply came from the cloud endpoint.',
+        });
+      }
     } catch {
       toast({
-        title: "Connection Error",
-        description: "Failed to reach Emerald. Please try again.",
-        variant: "destructive"
+        title: 'Connection Error',
+        description: 'Failed to reach the support backend. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -102,44 +162,41 @@ export function ChatWidget() {
 
   const handleEscalate = async () => {
     try {
-      const history = messages.map(m => ({
+      const history = messages.map((m) => ({
         role: m.role,
         content: m.content,
-        timestamp: m.timestamp.toISOString()
+        timestamp: m.timestamp.toISOString(),
       }));
 
       const res = await escalateMutation.mutateAsync({
         data: {
           sessionId,
-          subject: hasSecurityAlertSession ? "URGENT: Possible Account Compromise" : "General Support Escalation",
-          chatHistory: history
-        }
+          subject: hasSecurityAlertSession ? 'URGENT: Possible Account Compromise' : 'General Support Escalation',
+          chatHistory: history,
+        },
       });
 
       if (res.success) {
         toast({
-          title: "Ticket Escalated",
-          description: "A human agent has been notified and will review your session shortly.",
+          title: 'Ticket Escalated',
+          description: 'A human agent has been notified and will review your session shortly.',
         });
       }
     } catch {
       toast({
-        title: "Escalation Failed",
-        description: "Could not create support ticket. Please try again.",
-        variant: "destructive"
+        title: 'Escalation Failed',
+        description: 'Could not create support ticket. Please try again.',
+        variant: 'destructive',
       });
     }
   };
-
-  const widgetWidth = isFullScreen ? 'w-screen h-screen' : 'w-[380px] h-[520px] sm:w-[400px] sm:h-[560px]';
-  const widgetPosition = isFullScreen ? 'inset-0' : 'bottom-6 right-6';
 
   const formattedStartTime = startTime.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
   });
 
   return (
@@ -152,28 +209,32 @@ export function ChatWidget() {
             exit={isFullScreen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "chat-widget fixed z-50 flex flex-col bg-[hsl(var(--widget-bg))] shadow-2xl overflow-hidden",
+              'chat-widget fixed z-50 flex flex-col bg-[hsl(var(--widget-bg))] shadow-2xl overflow-hidden',
               isFullScreen ? 'inset-0 rounded-none' : 'bottom-6 right-6 rounded-2xl border border-[hsl(var(--widget-border))]',
             )}
             style={!isFullScreen ? { width: 400, height: 560 } : undefined}
           >
             <div className="flex items-center justify-between px-4 py-3 bg-[hsl(220,13%,8%)] border-b border-[hsl(var(--widget-border))]">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <button
                   onClick={() => { setIsOpen(false); setIsFullScreen(false); }}
                   className="p-1 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
                   aria-label="Back"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
-                <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-sm font-semibold text-[hsl(var(--widget-fg))]">
-                  Started {formattedStartTime}
-                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-semibold text-[hsl(var(--widget-fg))] truncate">
+                    Started {formattedStartTime}
+                  </span>
+                  <ReadinessPill status={llm.status} progress={llm.progress} stageLabel={llm.loadStageLabel} />
+                </div>
               </div>
               <div className="flex items-center gap-1">
+                <ModelInfoPopover />
                 <button
                   onClick={handleEscalate}
                   disabled={escalateMutation.isPending}
@@ -190,8 +251,8 @@ export function ChatWidget() {
                 <button
                   onClick={() => setIsFullScreen(!isFullScreen)}
                   className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
-                  title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
-                  aria-label={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
+                  title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
+                  aria-label={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
                 >
                   {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
@@ -221,13 +282,28 @@ export function ChatWidget() {
               )}
             </AnimatePresence>
 
+            {llm.status === 'unsupported' && (
+              <div className="bg-sky-900/30 border-b border-sky-700/40 px-4 py-2 text-[11px] text-sky-200 leading-relaxed shrink-0">
+                Your browser doesn't support local AI &mdash; using cloud mode.
+                {' '}
+                <a
+                  href="https://caniuse.com/webgpu"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="underline hover:text-white"
+                >
+                  Why?
+                </a>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-4">
-              <div className={cn(isFullScreen ? "max-w-3xl mx-auto" : "")}>
+              <div className={cn(isFullScreen ? 'max-w-3xl mx-auto' : '')}>
                 {messages.map((msg) => (
                   <ChatMessage key={msg.id} {...msg} compact={!isFullScreen} />
                 ))}
 
-                {chatMutation.isPending && (
+                {isPending && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -265,7 +341,7 @@ export function ChatWidget() {
                 </div>
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim() || chatMutation.isPending}
+                  disabled={!input.trim() || isPending}
                   className="p-2 text-emerald-400 hover:text-emerald-300 disabled:text-[hsl(var(--widget-muted))] disabled:opacity-50 transition-colors"
                   aria-label="Send message"
                 >
@@ -273,7 +349,7 @@ export function ChatWidget() {
                 </button>
               </div>
               <div className="text-center mt-1 text-[9px] text-[hsl(var(--widget-muted))] opacity-60">
-                Powered by Emerald AI
+                {llm.status === 'ready' ? 'Local inference · WebGPU · no telemetry' : 'Powered by Greater'}
               </div>
             </div>
           </motion.div>
@@ -320,5 +396,55 @@ export function ChatWidget() {
         onClose={() => setShowSecurityPanel(false)}
       />
     </>
+  );
+}
+
+/**
+ * Pill that reflects the LLM provider's current status. Spec wording:
+ *   - "Spooling local AI…" during download
+ *   - "Local AI ready" once warm
+ *   - "Cloud mode" on unsupported browsers
+ */
+function ReadinessPill({
+  status,
+  progress,
+  stageLabel,
+}: {
+  status: ModelStatus;
+  progress: number;
+  stageLabel: string;
+}) {
+  let label = '';
+  let color = 'text-[hsl(var(--widget-muted))]';
+  let icon: React.ReactNode = <CircleDashed className="w-3 h-3" />;
+
+  if (status === 'ready') {
+    label = 'Local AI ready';
+    color = 'text-emerald-400';
+    icon = <ShieldCheck className="w-3 h-3" />;
+  } else if (status === 'unsupported') {
+    label = 'Cloud mode';
+    color = 'text-sky-300';
+  } else if (status === 'error') {
+    label = 'Cloud mode (local AI failed)';
+    color = 'text-amber-400';
+  } else if (status === 'idle') {
+    label = 'Preparing local AI…';
+  } else {
+    const pct = progress >= 0 && progress <= 100 ? ` ${Math.round(progress)}%` : '';
+    const stageHint = stageLabel ? ` · ${stageLabel}` : '';
+    label = `Spooling local AI…${pct}${stageHint}`;
+    icon = <Loader2 className="w-3 h-3 animate-spin" />;
+  }
+
+  return (
+    <span
+      className={cn('flex items-center gap-1 text-[10px] uppercase tracking-wider truncate', color)}
+      data-testid="status-llm-pill"
+      title={label}
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </span>
   );
 }
