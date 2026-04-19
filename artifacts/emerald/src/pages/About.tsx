@@ -2,8 +2,10 @@ import React from "react";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { ContactCTASection } from "@/components/ContactCTASection";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function About() {
+  useDocumentTitle("About");
   return (
     <>
       <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">

@@ -18,6 +18,7 @@ import {
   synthesizeTicketId,
   type TicketSummary,
 } from "@/lib/buildTicket";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 /**
  * Support-ticket preview screen. Lives at `/demo/:slug/ticket` and
@@ -32,6 +33,8 @@ export default function TicketPreview() {
   const [, params] = useRoute("/demo/:slug/ticket");
   const slug = params?.slug ?? "";
   const stored = useMemo(() => (slug ? loadTranscript(slug) : null), [slug]);
+
+  useDocumentTitle("Ticket preview");
 
   if (!stored) return <EmptyState slug={slug} />;
   return <TicketPreviewInner stored={stored} />;

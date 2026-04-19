@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Major+Mono+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&display=swap');
 @import "tailwindcss";
 
 @theme inline {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif: 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
   --font-display: 'Major Mono Display', monospace;
 
   --color-background: hsl(var(--background));

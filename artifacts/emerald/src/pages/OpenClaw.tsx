@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { ArrowLeft, Check, Cpu, Hourglass, Rocket } from "lucide-react";
 import { ContactCTASection } from "@/components/ContactCTASection";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 /**
  * OpenClaw vision page.
@@ -15,6 +16,7 @@ import { ContactCTASection } from "@/components/ContactCTASection";
  * micro-settlement.
  */
 export default function OpenClaw() {
+  useDocumentTitle("OpenClaw");
   return (
     <>
       <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">

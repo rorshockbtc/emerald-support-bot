@@ -10,6 +10,7 @@ import { useScenarioModal } from "@/hooks/useScenarioModal";
 import { prefillChat } from "@/hooks/prefillChat";
 import { getPersona, type Persona } from "@/data/personas";
 import NotFound from "@/pages/not-found";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import type { PipePersona } from "@workspace/pipes";
 
 /**
@@ -37,6 +38,7 @@ export default function PersonaDemoShell() {
 function PersonaDemoShellInner({ persona }: { persona: Persona }) {
   const scenario = persona.scenario!;
   const llm = useLLM();
+  useDocumentTitle(`${persona.name} demo`);
   const scenarioModal = useScenarioModal(persona.slug);
 
   // Each persona's seed bundle is loaded on demand. The FOSS fork

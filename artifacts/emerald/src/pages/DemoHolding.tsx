@@ -5,12 +5,14 @@ import { getPersona } from "@/data/personas";
 import { useContact } from "@/components/ContactContext";
 import { ContactCTASection } from "@/components/ContactCTASection";
 import NotFound from "@/pages/not-found";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function DemoHolding() {
   const [, params] = useRoute("/demo/:slug");
   const [, setLocation] = useLocation();
   const persona = params ? getPersona(params.slug) : undefined;
   const { open: openContact } = useContact();
+  useDocumentTitle(persona ? `${persona.name} demo` : null);
 
   // Personas whose demo is live get routed to their dedicated demo route
   // instead of the holding screen. Today that's only FinTech →

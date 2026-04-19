@@ -5,8 +5,10 @@ import { ArrowRight, Lock, Cpu, FileText, AlertCircle } from "lucide-react";
 import { personas } from "@/data/personas";
 import { PersonaCard } from "@/components/PersonaCard";
 import { ContactCTASection } from "@/components/ContactCTASection";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function Home() {
+  useDocumentTitle("");
   return (
     <>
       <Hero />

@@ -3,6 +3,7 @@ import { Link, useRoute } from "wouter";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { getPersona } from "@/data/personas";
 import { ContactCTASection } from "@/components/ContactCTASection";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import NotFound from "@/pages/not-found";
 
 const BASE = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL;
@@ -14,6 +15,8 @@ const BASE = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL;
 export default function PersonaPage() {
   const [, params] = useRoute("/bots/:slug");
   const persona = params ? getPersona(params.slug) : undefined;
+
+  useDocumentTitle(persona ? persona.name : null);
 
   if (!persona) return <NotFound />;
 

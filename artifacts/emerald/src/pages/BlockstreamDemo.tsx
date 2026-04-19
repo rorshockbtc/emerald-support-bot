@@ -9,6 +9,7 @@ import { useLLM } from '@/llm/LLMProvider';
 import { useScenarioModal } from '@/hooks/useScenarioModal';
 import { prefillChat } from '@/hooks/prefillChat';
 import { getPersona } from '@/data/personas';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const sidebarLinks = [
   { label: "Unauthorized login activity", active: true },
@@ -20,6 +21,11 @@ const sidebarLinks = [
 ];
 
 export default function Home() {
+  // Spoofed host title — this demo simulates a Blockstream help-center
+  // page, so the tab title pretends to be Blockstream's, not Greater's.
+  useDocumentTitle("Unauthorized Login Activity - Blockstream Help Center", {
+    raw: true,
+  });
   // Load the proprietary Bitcoin knowledge bundle on mount. On a FOSS
   // fork the file is absent, the loader marks it 'absent' silently,
   // and this demo runs in Generic mode (visibly) with no Bitcoin
