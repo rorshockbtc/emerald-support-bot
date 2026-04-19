@@ -1,5 +1,4 @@
 /// <reference lib="webworker" />
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * In-browser LLM + embedder worker for Greater.
@@ -7,8 +6,8 @@
  * - Embedder: Xenova/bge-small-en-v1.5 (small, fast, ~30MB).
  * - LLM:     onnx-community/Llama-3.2-1B-Instruct-q4f16 (~800MB,
  *            WebGPU-accelerated). Picked over Llama-3.2-3B because
- *            the 1B variant has the best stable WebGPU build at this
- *            time and downloads in <1 minute on a typical home
+ *            the 1B variant has the most stable WebGPU build at
+ *            this time and downloads in <1 minute on a typical home
  *            connection. Same chat-template format; trivial swap if
  *            we move up to 3B later.
  *
@@ -19,78 +18,104 @@
 import {
   pipeline,
   env,
-  type TextGenerationPipeline,
   type FeatureExtractionPipeline,
+  type TextGenerationPipeline,
+  type ProgressInfo,
+  type Tensor,
 } from "@huggingface/transformers";
 import type { WorkerInbound, WorkerOutbound, ChatTurn } from "./types";
+import { EMBEDDER_MODEL_ID, LLM_MODEL_ID } from "./config";
 
 // Don't try to look up models on the local filesystem; always use the
 // HuggingFace hub (which is browser-cached via OPFS by Transformers.js).
 env.allowLocalModels = false;
 
-export const LLM_MODEL_ID = "onnx-community/Llama-3.2-1B-Instruct-q4f16";
-export const EMBEDDER_MODEL_ID = "Xenova/bge-small-en-v1.5";
-
 let embedder: FeatureExtractionPipeline | null = null;
 let llm: TextGenerationPipeline | null = null;
 
+const ctx = self as unknown as DedicatedWorkerGlobalScope;
+
 function send(msg: WorkerOutbound) {
-  (self as DedicatedWorkerGlobalScope).postMessage(msg);
+  ctx.postMessage(msg);
+}
+
+/**
+ * Narrow ProgressInfo to the file/progress/status fields we surface.
+ * The transformers.js union covers initiate / download / progress /
+ * done; "file", "progress", and "status" are present on the relevant
+ * variants and absent on others, so we read them defensively.
+ */
+function readProgress(p: ProgressInfo): {
+  file?: string;
+  progress: number;
+  status?: string;
+} {
+  const rec = p as unknown as Record<string, unknown>;
+  const file = typeof rec.file === "string" ? rec.file : undefined;
+  const status = typeof rec.status === "string" ? rec.status : undefined;
+  const progress =
+    typeof rec.progress === "number" ? (rec.progress as number) : -1;
+  return { file, progress, status };
 }
 
 async function loadAll() {
   try {
-    embedder = (await pipeline(
-      "feature-extraction",
-      EMBEDDER_MODEL_ID,
-      {
-        progress_callback: (p: any) => {
-          send({
-            type: "progress",
-            stage: "embedder",
-            file: p.file,
-            progress: typeof p.progress === "number" ? p.progress : -1,
-            status: p.status,
-          });
-        },
+    embedder = await pipeline("feature-extraction", EMBEDDER_MODEL_ID, {
+      progress_callback: (p: ProgressInfo) => {
+        const { file, progress, status } = readProgress(p);
+        send({ type: "progress", stage: "embedder", file, progress, status });
       },
-    )) as FeatureExtractionPipeline;
+    });
     send({ type: "ready", stage: "embedder" });
 
-    llm = (await pipeline(
-      "text-generation",
-      LLM_MODEL_ID,
-      {
-        device: "webgpu",
-        dtype: "q4f16",
-        progress_callback: (p: any) => {
-          send({
-            type: "progress",
-            stage: "llm",
-            file: p.file,
-            progress: typeof p.progress === "number" ? p.progress : -1,
-            status: p.status,
-          });
-        },
-      } as any,
-    )) as TextGenerationPipeline;
+    llm = await pipeline("text-generation", LLM_MODEL_ID, {
+      device: "webgpu",
+      dtype: "q4f16",
+      progress_callback: (p: ProgressInfo) => {
+        const { file, progress, status } = readProgress(p);
+        send({ type: "progress", stage: "llm", file, progress, status });
+      },
+    });
     send({ type: "ready", stage: "llm" });
     send({ type: "ready", stage: "all" });
   } catch (err) {
     send({
       type: "error",
-      message: (err as Error).message ?? String(err),
+      message: err instanceof Error ? err.message : String(err),
     });
   }
 }
 
 async function handleEmbed(id: string, text: string) {
   if (!embedder) throw new Error("Embedder not ready");
-  const out = await embedder(text, { pooling: "mean", normalize: true });
-  // out.data is a TypedArray (Float32Array). Convert to plain array
-  // for structured-clone friendliness with IndexedDB downstream.
+  const out = (await embedder(text, {
+    pooling: "mean",
+    normalize: true,
+  })) as Tensor;
+  // Tensor.data is a Float32Array. Convert to plain array for
+  // structured-clone friendliness with IndexedDB downstream.
   const vector = Array.from(out.data as Float32Array);
   send({ type: "embedResult", id, vector });
+}
+
+/** Shape of the assistant turn returned by chat-mode generation. */
+interface AssistantTurn {
+  role: string;
+  content: string;
+}
+interface GeneratedItem {
+  generated_text: string | AssistantTurn[];
+}
+
+function extractAssistantText(out: unknown): string {
+  const first: unknown = Array.isArray(out) ? out[0] : out;
+  const gen = (first as GeneratedItem | undefined)?.generated_text;
+  if (Array.isArray(gen)) {
+    const last = gen[gen.length - 1];
+    return typeof last?.content === "string" ? last.content : "";
+  }
+  if (typeof gen === "string") return gen;
+  return "";
 }
 
 async function handleGenerate(
@@ -99,31 +124,15 @@ async function handleGenerate(
   maxNewTokens: number,
 ) {
   if (!llm) throw new Error("LLM not ready");
-  const out: any = await llm(messages as any, {
+  const out = await llm(messages, {
     max_new_tokens: maxNewTokens,
     do_sample: false,
     return_full_text: false,
   });
-  // Transformers.js v3 chat-mode returns generated_text as the full
-  // message array including the new assistant turn at the end.
-  let text = "";
-  const first = Array.isArray(out) ? out[0] : out;
-  const gen = first?.generated_text;
-  if (Array.isArray(gen)) {
-    const last = gen[gen.length - 1];
-    text =
-      typeof last?.content === "string"
-        ? last.content
-        : JSON.stringify(last);
-  } else if (typeof gen === "string") {
-    text = gen;
-  } else {
-    text = String(gen ?? "");
-  }
-  send({ type: "generateResult", id, text: text.trim() });
+  send({ type: "generateResult", id, text: extractAssistantText(out).trim() });
 }
 
-self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
+ctx.onmessage = async (e: MessageEvent<WorkerInbound>) => {
   const msg = e.data;
   try {
     if (msg.type === "init") {
@@ -134,10 +143,11 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
       await handleGenerate(msg.id, msg.messages, msg.maxNewTokens ?? 256);
     }
   } catch (err) {
+    const id = "id" in msg ? msg.id : undefined;
     send({
       type: "error",
-      id: (msg as any).id,
-      message: (err as Error).message ?? String(err),
+      id,
+      message: err instanceof Error ? err.message : String(err),
     });
   }
 };

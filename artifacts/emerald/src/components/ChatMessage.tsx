@@ -5,7 +5,7 @@ import { cn, formatTime } from '@/lib/utils';
 import { TrustBadge } from './TrustBadge';
 import { useToast } from '@/hooks/use-toast';
 import type { Article } from '@workspace/api-client-react';
-import type { CloudReason, ResponseSource, ThoughtTrace } from '@/llm/types';
+import type { CloudReason, ResponseSource, RetrievedChunk, ThoughtTrace } from '@/llm/types';
 
 export interface MessageProps {
   id: string;
@@ -92,7 +92,11 @@ export function ChatMessage({
               : "bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-2xl rounded-tr-sm"
           )}
         >
-          <div className="whitespace-pre-wrap leading-relaxed">{content}</div>
+          <div className="whitespace-pre-wrap leading-relaxed">
+            {isBot && thoughtTrace && thoughtTrace.chunks.length > 0
+              ? renderWithCitations(content, thoughtTrace.chunks)
+              : content}
+          </div>
         </div>
 
         {/* Metadata & Actions */}
@@ -205,6 +209,54 @@ export function ChatMessage({
       )}
     </motion.div>
   );
+}
+
+/**
+ * Convert `[N]` and `[N,M]` markers in the model's reply into clickable
+ * superscript links to the corresponding retrieved chunk's source URL.
+ * Numbers that don't map to a chunk are rendered as plain text — we
+ * never invent a destination.
+ */
+function renderWithCitations(text: string, chunks: RetrievedChunk[]): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const re = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
+    const nums = m[1].split(",").map((s) => parseInt(s.trim(), 10));
+    const valid = nums.every((n) => n >= 1 && n <= chunks.length);
+    if (valid) {
+      parts.push(
+        <sup key={`c-${key++}`} className="ml-0.5">
+          {nums.map((n, i) => {
+            const c = chunks[n - 1];
+            return (
+              <React.Fragment key={n}>
+                {i > 0 && <span className="text-muted-foreground">,</span>}
+                <a
+                  href={c.source_url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  title={c.source_label}
+                  className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
+                  data-testid={`link-citation-${n}`}
+                >
+                  [{n}]
+                </a>
+              </React.Fragment>
+            );
+          })}
+        </sup>,
+      );
+    } else {
+      parts.push(m[0]);
+    }
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
 }
 
 function SourceBadge({

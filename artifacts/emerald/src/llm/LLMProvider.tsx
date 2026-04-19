@@ -18,10 +18,17 @@ import type {
   ThoughtTrace,
   WorkerOutbound,
 } from "./types";
+// IMPORTANT: import constants from the worker-safe config module, NOT
+// from `./llmWorker`. Importing the worker module on the main thread
+// would drag the entire @huggingface/transformers runtime into the
+// initial bundle and execute worker-only top-level code on `window`,
+// defeating the lazy-load design.
 import {
+  APPROX_SIZE_MB,
   EMBEDDER_MODEL_ID,
   LLM_MODEL_ID,
-} from "./llmWorker";
+  LLM_QUANTIZATION_LABEL,
+} from "./config";
 import { SEED_CORPUS } from "./seedCorpus";
 import {
   clearAll,
@@ -61,8 +68,6 @@ interface LLMContextValue {
 
 const LLMContext = createContext<LLMContextValue | null>(null);
 
-const APPROX_SIZE_MB = 830; // ~30MB embedder + ~800MB LLM q4f16
-
 export function LLMProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<ModelStatus>("idle");
   const [progress, setProgress] = useState<number>(0);
@@ -71,12 +76,41 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
-  const pendingRef = useRef<
-    Map<string, { resolve: (v: any) => void; reject: (e: Error) => void }>
-  >(new Map());
-  const embedderReadyRef = useRef(false);
+  type Pending = {
+    resolve: (v: unknown) => void;
+    reject: (e: Error) => void;
+  };
+  const pendingRef = useRef<Map<string, Pending>>(new Map());
 
-  const ensureSeedCorpus = useCallback(async () => {
+  const callWorker = useCallback(
+    <T,>(
+      type: "embed" | "generate",
+      payload: { text?: string; messages?: ChatTurn[]; maxNewTokens?: number },
+    ): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const w = workerRef.current;
+        if (!w) return reject(new Error("Worker not initialized"));
+        const id = crypto.randomUUID();
+        pendingRef.current.set(id, {
+          resolve: resolve as (v: unknown) => void,
+          reject,
+        });
+        if (type === "embed") {
+          w.postMessage({ type: "embed", id, text: payload.text });
+        } else {
+          w.postMessage({
+            type: "generate",
+            id,
+            messages: payload.messages,
+            maxNewTokens: payload.maxNewTokens,
+          });
+        }
+      });
+    },
+    [],
+  );
+
+  const ensureSeedCorpus = useCallback(async (): Promise<void> => {
     const meta = await getCorpusMeta();
     const count = await countDocuments();
     if (
@@ -98,35 +132,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       EMBEDDER_MODEL_ID,
       SEED_CORPUS.length,
     );
-  }, []);
-
-  const callWorker = useCallback(
-    <T,>(
-      type: "embed" | "generate",
-      payload: { text?: string; messages?: ChatTurn[]; maxNewTokens?: number },
-    ): Promise<T> => {
-      return new Promise<T>((resolve, reject) => {
-        const w = workerRef.current;
-        if (!w) return reject(new Error("Worker not initialized"));
-        const id = crypto.randomUUID();
-        pendingRef.current.set(id, {
-          resolve: resolve as (v: any) => void,
-          reject,
-        });
-        if (type === "embed") {
-          w.postMessage({ type: "embed", id, text: payload.text });
-        } else {
-          w.postMessage({
-            type: "generate",
-            id,
-            messages: payload.messages,
-            maxNewTokens: payload.maxNewTokens,
-          });
-        }
-      });
-    },
-    [],
-  );
+  }, [callWorker]);
 
   const startWorker = useCallback(() => {
     // Browsers without WebGPU permanently use cloud fallback.
@@ -137,13 +143,17 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
     if (workerRef.current) return; // already started
 
     try {
+      // The `new URL(..., import.meta.url)` form is what tells Vite to
+      // emit `llmWorker.ts` as a separate worker bundle (not as a main
+      // thread import). This is the only reference to llmWorker.ts
+      // anywhere in the main-thread code; constants live in ./config.
       const w = new Worker(
         new URL("./llmWorker.ts", import.meta.url),
         { type: "module" },
       );
       workerRef.current = w;
 
-      w.onmessage = async (e: MessageEvent<WorkerOutbound>) => {
+      w.onmessage = (e: MessageEvent<WorkerOutbound>) => {
         const msg = e.data;
         if (msg.type === "progress") {
           setStatus(
@@ -157,7 +167,6 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           );
         } else if (msg.type === "ready") {
           if (msg.stage === "embedder") {
-            embedderReadyRef.current = true;
             // Build the seed-corpus vector index in the background while
             // the LLM is still downloading. Embedding 20 chunks is fast.
             ensureSeedCorpus().catch((err) => {
@@ -207,18 +216,21 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
   // through the model download.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const idle = (window as any).requestIdleCallback as
-      | undefined
-      | ((cb: () => void, opts?: { timeout: number }) => number);
-    const handle = idle
-      ? idle(() => startWorker(), { timeout: 1500 })
+    type IdleCallback = (cb: () => void, opts?: { timeout: number }) => number;
+    type IdleCancel = (handle: number) => void;
+    const w = window as unknown as {
+      requestIdleCallback?: IdleCallback;
+      cancelIdleCallback?: IdleCancel;
+    };
+    const handle = w.requestIdleCallback
+      ? w.requestIdleCallback(() => startWorker(), { timeout: 1500 })
       : window.setTimeout(() => startWorker(), 250);
     return () => {
-      const cancelIdle = (window as any).cancelIdleCallback as
-        | undefined
-        | ((h: number) => void);
-      if (idle && cancelIdle) cancelIdle(handle as number);
-      else window.clearTimeout(handle as number);
+      if (w.requestIdleCallback && w.cancelIdleCallback) {
+        w.cancelIdleCallback(handle);
+      } else {
+        window.clearTimeout(handle);
+      }
     };
   }, [startWorker]);
 
@@ -239,6 +251,12 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         "snippets. If the snippets do not contain the answer, say so",
         "plainly and suggest opening a support ticket. Never ask for the",
         "user's seed phrase, PIN, or password — refuse if requested.",
+        "",
+        "Citation rules:",
+        "- After every factual claim, cite the supporting snippet inline as",
+        "  [N] where N is the snippet number you used (e.g. [1] or [2,3]).",
+        "- Do not invent snippet numbers; only cite snippets shown below.",
+        "- If no snippet supports a claim, do not make the claim.",
         "",
         "Knowledge snippets:",
         context,
@@ -284,7 +302,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
   const modelInfo: ModelInfo = useMemo(
     () => ({
       llmName: LLM_MODEL_ID,
-      llmQuantization: "q4f16 · WebGPU",
+      llmQuantization: LLM_QUANTIZATION_LABEL,
       embedderName: EMBEDDER_MODEL_ID,
       approxSizeMb: APPROX_SIZE_MB,
       loadedAt,
