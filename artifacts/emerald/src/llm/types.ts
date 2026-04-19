@@ -238,4 +238,13 @@ export interface LocalAnswer {
 export interface AskOptions {
   systemPrompt?: string;
   biasFilter?: Bias[];
+  /**
+   * Stable id of the active bias perspective. Carried so that cloud
+   * fallback requests (which can't read the Pipe registry) can still
+   * pass the bias through to the server, and so the per-message bias
+   * chip on the response stays truthful.
+   */
+  biasId?: string;
+  /** Human-readable label for `biasId` (e.g. "Core", "Knots"). */
+  biasLabel?: string;
 }

@@ -18,4 +18,8 @@ export interface ChatResponse {
   ciBreakdown: string;
   lastUpdated: Date;
   relatedArticles?: Article[];
+  /** Echo of the biasId honored when generating this reply. */
+  biasId?: string;
+  /** Echo of the biasLabel honored when generating this reply. */
+  biasLabel?: string;
 }

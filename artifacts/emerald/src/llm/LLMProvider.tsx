@@ -182,8 +182,41 @@ interface LLMContextValue {
    * already-installed bundles short-circuit on the persisted meta flag.
    */
   requestSeedBundle: (slug: string) => void;
+  /**
+   * Per-session quota for cloud-fallback chat calls. When `remaining`
+   * hits 0 the chat widget keeps the conversation going on the
+   * in-browser model and surfaces a one-time inline notice. Persisted
+   * across page refreshes (but not new tabs) via `sessionStorage`.
+   */
+  cloudBudget: { used: number; remaining: number; total: number };
+  /**
+   * Atomically check-and-decrement the cloud budget. Returns `true`
+   * when a cloud call is permitted (and reserves one slot); returns
+   * `false` when the cap has already been reached. Always call this
+   * exactly once per intended cloud request.
+   */
+  consumeCloudCall: () => boolean;
+  /**
+   * Counterpart to `consumeCloudCall`: give back a slot when the
+   * cloud request itself failed and the visitor never received a
+   * paid answer. No-op if the counter is already at zero.
+   */
+  refundCloudCall: () => void;
   clearCacheAndReload: () => Promise<void>;
 }
+
+/**
+ * Hard cap on cloud-fallback chat calls per visitor session.
+ *
+ * The cloud endpoint hits a paid third-party LLM on the maintainer's
+ * dime, so unbounded use by passers-by would make the demo expensive
+ * to leave online. Three calls is enough for a visitor to see the
+ * cloud path work (during the local-model warmup) and then transition
+ * to the in-browser model for the rest of the session. Resets only
+ * when the browser tab is closed.
+ */
+const CLOUD_CALL_BUDGET = 3;
+const CLOUD_CALLS_STORAGE_KEY = "greater:cloud-calls-used";
 
 const LLMContext = createContext<LLMContextValue | null>(null);
 
@@ -204,6 +237,75 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
   const embedderReadyRef = useRef<boolean>(false);
   /** Serializes bundle loads so two requests can't interleave callWorker calls. */
   const bundleLoadChainRef = useRef<Promise<void>>(Promise.resolve());
+
+  /**
+   * Per-session cloud-call counter. Lazy-initialised from
+   * `sessionStorage` so a page refresh doesn't reset the budget mid-
+   * conversation. The setter is also responsible for writing the
+   * value back to `sessionStorage`; never bypass it.
+   */
+  const [cloudCallsUsed, setCloudCallsUsed] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    try {
+      const raw = window.sessionStorage.getItem(CLOUD_CALLS_STORAGE_KEY);
+      const n = raw ? parseInt(raw, 10) : 0;
+      if (!Number.isFinite(n) || n < 0) return 0;
+      return Math.min(n, CLOUD_CALL_BUDGET);
+    } catch {
+      return 0;
+    }
+  });
+
+  /**
+   * Mirror of `cloudCallsUsed` kept in a ref so `consumeCloudCall`
+   * stays referentially stable. The state copy drives renders; the
+   * ref drives the atomic check-and-decrement logic so two concurrent
+   * sends from the chat widget can't both squeak past the cap.
+   */
+  const cloudCallsUsedRef = useRef<number>(cloudCallsUsed);
+
+  const consumeCloudCall = useCallback((): boolean => {
+    if (cloudCallsUsedRef.current >= CLOUD_CALL_BUDGET) return false;
+    const next = cloudCallsUsedRef.current + 1;
+    cloudCallsUsedRef.current = next;
+    setCloudCallsUsed(next);
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(
+          CLOUD_CALLS_STORAGE_KEY,
+          String(next),
+        );
+      } catch {
+        // sessionStorage can throw in private mode / quota-exceeded —
+        // the cap is best-effort, so swallow rather than break chat.
+      }
+    }
+    return true;
+  }, []);
+
+  /**
+   * Give a slot back to the cloud budget. Intended for the case where
+   * a `consumeCloudCall()` was followed by a *failed* cloud request
+   * (network drop, 5xx, abort) — the visitor never received a paid
+   * answer, so the slot shouldn't be permanently spent. Bottom-bounded
+   * at 0 so we never grow the effective budget past the cap.
+   */
+  const refundCloudCall = useCallback((): void => {
+    if (cloudCallsUsedRef.current <= 0) return;
+    const next = cloudCallsUsedRef.current - 1;
+    cloudCallsUsedRef.current = next;
+    setCloudCallsUsed(next);
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(
+          CLOUD_CALLS_STORAGE_KEY,
+          String(next),
+        );
+      } catch {
+        // best-effort; see consumeCloudCall.
+      }
+    }
+  }, []);
 
   const workerRef = useRef<Worker | null>(null);
   type Pending = {
@@ -641,6 +743,13 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
     ingest,
     bundleProgress,
     requestSeedBundle,
+    cloudBudget: {
+      used: cloudCallsUsed,
+      remaining: Math.max(0, CLOUD_CALL_BUDGET - cloudCallsUsed),
+      total: CLOUD_CALL_BUDGET,
+    },
+    consumeCloudCall,
+    refundCloudCall,
     clearCacheAndReload,
   };
 

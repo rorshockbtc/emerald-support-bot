@@ -224,6 +224,20 @@ components:
           type: string
         sessionId:
           type: string
+        biasId:
+          type: string
+          description: |
+            Stable id of the active bias perspective at send time
+            (e.g. "core", "knots", "neutral"). Used by the server to
+            prepend a bias-specific system prompt so cloud fallbacks
+            honor the same stance the visitor sees in the UI.
+        biasLabel:
+          type: string
+          description: |
+            Human-readable label of the active bias (e.g. "Core",
+            "Knots"). Echoed back on the response so the per-message
+            bias chip stays truthful even if the user toggles bias
+            after sending.
       required:
         - message
         - sessionId
@@ -253,6 +267,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Article"
+        biasId:
+          type: string
+          description: Echo of the biasId honored when generating this reply.
+        biasLabel:
+          type: string
+          description: Echo of the biasLabel honored when generating this reply.
       required:
         - reply
         - intent

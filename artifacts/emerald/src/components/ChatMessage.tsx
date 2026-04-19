@@ -39,6 +39,14 @@ export interface MessageProps {
    * excluded from the model's history on the next turn.
    */
   isModeNote?: boolean;
+  /**
+   * True when this local response was served *because the cloud
+   * fallback budget for the session was exhausted* — so the badge
+   * reads "Local-only · cloud rate-limited" rather than the regular
+   * "Local · Private". Distinct from `responseSource === 'local'`
+   * alone, which is the normal happy path.
+   */
+  localOnly?: boolean;
 }
 
 export function ChatMessage({
@@ -57,6 +65,7 @@ export function ChatMessage({
   thoughtTrace,
   biasLabel,
   isModeNote,
+  localOnly,
 }: MessageProps) {
   const isBot = role === 'bot';
   const { toast } = useToast();
@@ -112,7 +121,11 @@ export function ChatMessage({
         {isBot && (responseSource || biasLabel) && (
           <div className="flex items-center gap-1.5 flex-wrap">
             {responseSource && (
-              <SourceBadge source={responseSource} cloudReason={cloudReason} />
+              <SourceBadge
+                source={responseSource}
+                cloudReason={cloudReason}
+                localOnly={localOnly}
+              />
             )}
             {biasLabel && (
               <div
@@ -305,11 +318,25 @@ function renderWithCitations(text: string, chunks: RetrievedChunk[]): React.Reac
 function SourceBadge({
   source,
   cloudReason,
+  localOnly,
 }: {
   source: ResponseSource;
   cloudReason?: CloudReason;
+  localOnly?: boolean;
 }) {
   if (source === "local") {
+    if (localOnly) {
+      return (
+        <div
+          className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md mb-1"
+          title="Cloud fallback is rate-limited for this session — answered by the in-browser model only."
+          data-testid="badge-local-only"
+        >
+          <ShieldCheck className="w-3 h-3" />
+          Local-only &middot; cloud rate-limited
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md mb-1">
         <ShieldCheck className="w-3 h-3" />

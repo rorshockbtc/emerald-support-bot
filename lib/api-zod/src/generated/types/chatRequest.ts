@@ -9,4 +9,16 @@
 export interface ChatRequest {
   message: string;
   sessionId: string;
+  /** Stable id of the active bias perspective at send time
+(e.g. "core", "knots", "neutral"). Used by the server to
+prepend a bias-specific system prompt so cloud fallbacks
+honor the same stance the visitor sees in the UI.
+ */
+  biasId?: string;
+  /** Human-readable label of the active bias (e.g. "Core",
+"Knots"). Echoed back on the response so the per-message
+bias chip stays truthful even if the user toggles bias
+after sending.
+ */
+  biasLabel?: string;
 }

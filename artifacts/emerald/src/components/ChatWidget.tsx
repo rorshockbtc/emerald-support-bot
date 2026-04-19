@@ -65,6 +65,12 @@ export function ChatWidget({
   const [showPipePanel, setShowPipePanel] = useState(false);
   const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
   const [isLocalGenerating, setIsLocalGenerating] = useState(false);
+  /**
+   * Tracks whether we've already injected the "cloud is rate-limited"
+   * inline notice for this widget instance. The first denied cloud
+   * call shows the notice; subsequent ones silently route to local.
+   */
+  const cloudCapNoticeShownRef = useRef<boolean>(false);
   const [messages, setMessages] = useState<MessageProps[]>([
     {
       id: uuidv4(),
@@ -143,68 +149,143 @@ export function ChatWidget({
     // Local-first when ready; cloud fallback otherwise. The label on
     // the response always says which path served it.
     if (llm.status === 'ready') {
-      setIsLocalGenerating(true);
-      try {
-        const history: ChatTurn[] = messages
-          .filter((m) => (m.role === 'user' || m.role === 'bot') && !m.isModeNote)
-          .map((m) => ({
-            role: m.role === 'bot' ? 'assistant' : 'user',
-            content: m.content,
-          }));
-        const askOptions: AskOptions | undefined = pipe.pipe
-          ? {
-              systemPrompt:
-                pipe.pipe.system_prompts[pipe.activeBiasId] ?? undefined,
-              // Always include 'neutral' so common-ground material remains
-              // eligible regardless of fork. The active bias adds the
-              // perspective-specific material on top.
-              biasFilter: Array.from(
-                new Set<Bias>([
-                  'neutral',
-                  pipe.activeBiasId as Bias,
-                ]),
-              ),
-            }
-          : undefined;
-        const answer = await llm.ask(history, userText, askOptions);
-        const botMsg: MessageProps = {
-          id: uuidv4(),
-          role: 'bot',
-          content: answer.text,
-          timestamp: new Date(),
-          trustScore: 0.96,
-          ciBreakdown: 'Local inference · WebGPU · grounded in retrieved chunks.',
-          responseSource: 'local',
-          thoughtTrace: answer.thoughtTrace,
-          biasLabel: activeBiasOption?.label,
-          biasId: pipe.pipe ? pipe.activeBiasId : undefined,
-        };
-        setMessages((prev) => [...prev, botMsg]);
-      } catch (err) {
-        // Local failed — surface as cloud fallback rather than silently
-        // failing. Keep behavior honest.
-        console.error('Local inference failed, falling back to cloud:', err);
-        await sendViaCloud(userText, 'local-error');
-      } finally {
-        setIsLocalGenerating(false);
-      }
+      await runLocal(userText);
       return;
     }
 
-    // Pick the most accurate reason for using cloud right now.
+    // Local isn't ready yet — try cloud, but honor the per-session
+    // cap. When the cap is hit we route through local even though
+    // the model isn't ready (the call will surface a clear error in
+    // the rare case it actually fails); see `tryCloudOrLocal`.
     const reason: CloudReason =
       llm.status === 'unsupported'
         ? 'unsupported'
         : llm.status === 'error'
           ? 'local-error'
           : 'loading';
-    await sendViaCloud(userText, reason);
+    await tryCloudOrLocal(userText, reason);
+  };
+
+  /**
+   * Run the local-first happy path. Factored out so it can also be
+   * called as a fallback from the cloud path (either when the cap is
+   * hit or when local was the original error and we need to bounce
+   * back). `localOnlyDueToCap` flips the per-message badge from
+   * "Local · Private" to "Local-only · cloud rate-limited" so the
+   * provenance stays honest.
+   */
+  const runLocal = async (userText: string, localOnlyDueToCap = false) => {
+    setIsLocalGenerating(true);
+    try {
+      const history: ChatTurn[] = messages
+        .filter((m) => (m.role === 'user' || m.role === 'bot') && !m.isModeNote)
+        .map((m) => ({
+          role: m.role === 'bot' ? 'assistant' : 'user',
+          content: m.content,
+        }));
+      const askOptions: AskOptions | undefined = pipe.pipe
+        ? {
+            systemPrompt:
+              pipe.pipe.system_prompts[pipe.activeBiasId] ?? undefined,
+            // Always include 'neutral' so common-ground material remains
+            // eligible regardless of fork. The active bias adds the
+            // perspective-specific material on top.
+            biasFilter: Array.from(
+              new Set<Bias>([
+                'neutral',
+                pipe.activeBiasId as Bias,
+              ]),
+            ),
+            biasId: pipe.activeBiasId,
+            biasLabel: activeBiasOption?.label,
+          }
+        : undefined;
+      const answer = await llm.ask(history, userText, askOptions);
+      const botMsg: MessageProps = {
+        id: uuidv4(),
+        role: 'bot',
+        content: answer.text,
+        timestamp: new Date(),
+        trustScore: 0.96,
+        ciBreakdown: 'Local inference · WebGPU · grounded in retrieved chunks.',
+        responseSource: 'local',
+        thoughtTrace: answer.thoughtTrace,
+        biasLabel: activeBiasOption?.label,
+        biasId: pipe.pipe ? pipe.activeBiasId : undefined,
+        localOnly: localOnlyDueToCap,
+      };
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (err) {
+      // Local failed mid-conversation. If the cloud cap still has
+      // room, fall back to cloud honestly; otherwise surface the
+      // failure inline (we can't quietly hammer the paid endpoint
+      // forever just because local crashed).
+      console.error('Local inference failed, falling back to cloud:', err);
+      await tryCloudOrLocal(userText, 'local-error');
+    } finally {
+      setIsLocalGenerating(false);
+    }
+  };
+
+  /**
+   * Cloud fallback gated by the per-session cap. When the cap has
+   * room, this is just `sendViaCloud`. When the cap is hit, we drop
+   * the one-time "rate-limited" notice into the transcript and route
+   * the request through the local model instead.
+   */
+  const tryCloudOrLocal = async (userText: string, cloudReason: CloudReason) => {
+    if (llm.consumeCloudCall()) {
+      await sendViaCloud(userText, cloudReason);
+      return;
+    }
+    if (!cloudCapNoticeShownRef.current) {
+      cloudCapNoticeShownRef.current = true;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          role: 'bot',
+          content:
+            'Cloud help is rate-limited — Greater is local-only from here. The in-browser model is still answering your questions.',
+          timestamp: new Date(),
+          isModeNote: true,
+        },
+      ]);
+    }
+    if (llm.status === 'ready') {
+      await runLocal(userText, true);
+      return;
+    }
+    // Pathological case: cap hit *and* local not ready yet. Don't
+    // burn the user's input — surface a clear inline message and
+    // stop. Don't recurse to cloud (that's exactly what the cap
+    // forbids). Don't recurse to local either (it would throw).
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: uuidv4(),
+        role: 'bot',
+        content:
+          'Cloud fallback is rate-limited for this session and the in-browser model is still loading. Please try again once the model finishes downloading.',
+        timestamp: new Date(),
+        responseSource: 'local',
+        localOnly: true,
+      },
+    ]);
   };
 
   const sendViaCloud = async (userText: string, cloudReason: CloudReason) => {
     try {
       const response = await chatMutation.mutateAsync({
-        data: { message: userText, sessionId },
+        data: {
+          message: userText,
+          sessionId,
+          // Pass the active bias through so the server can prepend a
+          // bias-specific system prompt and the per-message bias chip
+          // on the cloud reply matches what the visitor was viewing.
+          biasId: pipe.pipe ? pipe.activeBiasId : undefined,
+          biasLabel: activeBiasOption?.label,
+        },
       });
 
       if (response.isSecurityAlert) {
@@ -240,6 +321,10 @@ export function ChatWidget({
         });
       }
     } catch {
+      // The cloud request itself failed — refund the slot so a
+      // single network blip doesn't permanently shrink the visitor's
+      // budget. The cap is meant to bound *successful* paid calls.
+      llm.refundCloudCall();
       toast({
         title: 'Connection Error',
         description: 'Failed to reach the support backend. Please try again.',

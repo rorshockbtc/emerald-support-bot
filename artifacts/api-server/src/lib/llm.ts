@@ -23,10 +23,63 @@ Guidelines:
 - Use progressive disclosure: give a clear summary first, then offer to go deeper.
 - You are a prototype/demo. Be honest about your limitations.`;
 
+/**
+ * Server-side bias system prompts. Mirrors the three perspectives the
+ * Bitcoin Pipe declares in the browser (Core / Knots / Neutral). When
+ * the cloud fallback receives a `biasId` from the client, we prepend
+ * the matching prompt so the cloud reply honors the same stance the
+ * visitor was viewing locally. Unknown biasIds fall back to a generic
+ * "respect this perspective" instruction parameterised by `biasLabel`.
+ */
+const BIAS_SYSTEM_PROMPTS: Record<string, string> = {
+  core: [
+    "Active perspective: Bitcoin Core (the reference implementation).",
+    "Frame answers from the Core maintainers' viewpoint. When a topic",
+    "is contested between Core and Knots, explain Core's position and",
+    "briefly note that Knots disagrees rather than papering over it.",
+  ].join(" "),
+  knots: [
+    "Active perspective: Bitcoin Knots (the alternative client).",
+    "Frame answers from a Knots-aligned viewpoint, including stricter",
+    "policy defaults and the project's stated reasoning. When a topic",
+    "is contested with Core, explain Knots' position and briefly note",
+    "where Core disagrees.",
+  ].join(" "),
+  neutral: [
+    "Active perspective: Neutral. Present multiple sides where Bitcoin",
+    "Core and Bitcoin Knots disagree, without favouring either. Stick",
+    "to what is objectively documented.",
+  ].join(" "),
+};
+
+function biasSystemPrompt(
+  biasId?: string,
+  biasLabel?: string,
+): string | null {
+  if (!biasId && !biasLabel) return null;
+  if (biasId && BIAS_SYSTEM_PROMPTS[biasId]) {
+    return BIAS_SYSTEM_PROMPTS[biasId];
+  }
+  if (biasLabel) {
+    return [
+      `Active perspective: ${biasLabel}.`,
+      "Frame your answer to honour this perspective and explicitly flag",
+      "where alternative perspectives would disagree.",
+    ].join(" ");
+  }
+  return null;
+}
+
+export interface BiasContext {
+  biasId?: string;
+  biasLabel?: string;
+}
+
 export async function generateLLMResponse(
   userMessage: string,
   intent: string,
-  context?: string
+  context?: string,
+  bias?: BiasContext,
 ): Promise<string | null> {
   const together = getClient();
   if (!together) {
@@ -37,6 +90,11 @@ export async function generateLLMResponse(
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: SYSTEM_PROMPT },
     ];
+
+    const biasPrompt = biasSystemPrompt(bias?.biasId, bias?.biasLabel);
+    if (biasPrompt) {
+      messages.push({ role: "system", content: biasPrompt });
+    }
 
     if (context) {
       messages.push({

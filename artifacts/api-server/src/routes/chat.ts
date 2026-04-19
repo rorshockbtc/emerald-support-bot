@@ -21,7 +21,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const { message, sessionId } = parsed.data;
+  const { message, sessionId, biasId, biasLabel } = parsed.data;
   const scrubbedMessage = scrubPII(message);
   const intentResult = matchIntent(message);
 
@@ -55,7 +55,12 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   let reply: string;
-  const llmResponse = await generateLLMResponse(scrubbedMessage, intentResult.intent, articleContext);
+  const llmResponse = await generateLLMResponse(
+    scrubbedMessage,
+    intentResult.intent,
+    articleContext,
+    biasId || biasLabel ? { biasId, biasLabel } : undefined,
+  );
 
   if (llmResponse) {
     reply = llmResponse;
@@ -82,6 +87,8 @@ router.post("/chat", async (req, res): Promise<void> => {
       trustScore: a.trustScore,
       lastUpdated: a.lastUpdated,
     })),
+    biasId,
+    biasLabel,
   };
 
   res.json(SendMessageResponse.parse(responseData));

@@ -166,6 +166,103 @@ the same three rules the Bitcoin builder follows:
 Surface progress and any sleeps to the operator. A 90-minute build is
 fine; a silent 90-minute build is not.
 
+## Building a knowledge base
+
+Greater is a RAG-style support bot, which means the quality of the
+answers is bounded by the quality of the knowledge base behind it. The
+shell ships everything you need to build a basic, *functional* KB
+yourself; turning that into a sharp, persona-tuned Pipe is the part
+that's for hire.
+
+**What the shell gives you out of the box.** The ingestion endpoints
+documented above (`/api/ingest/extract`, `/api/ingest/sitemap`,
+`/api/ingest/rss`) are everything the in-product knowledge panel
+needs. Point them at a public site, sitemap, or feed; the server
+fetches and Readability-extracts the text, the browser chunks it
+paragraph-aware (~400–600 tokens per chunk, ~50-token overlap),
+embeds each chunk with the in-browser sentence-transformer, and
+persists it to IndexedDB. There is no LLM in the loop during
+ingestion — extraction and embedding are deterministic, so an
+ingest run produces the same chunks twice and your costs are zero
+on the per-page level. The Bitcoin builder script
+(`scripts/src/build-bitcoin-seed.ts`) is the pattern to copy for
+larger curated bundles: anonymous-first, throttled, resumable, and
+biased per-source.
+
+**A shape that "just works".** For most operators, the basic recipe
+that works is roughly:
+
+- Pick a small, opinionated source list rather than crawling
+  everything in sight. 50 well-chosen pages beat 5,000 noisy ones.
+- Run the source list through the ingest endpoints (or a builder
+  script if you want to ship the bundle to forks). Inspect the
+  resulting chunk count; if a single chunk dominates retrieval for
+  many queries, your chunk size is probably wrong.
+- Tag chunks with `bias` if you have a reason to (`'core'`,
+  `'knots'`, `'neutral'`, or whatever the persona uses); leave it
+  off if you don't. The retrieval path filters by bias when a Pipe
+  is active and the user has selected a perspective.
+- Test against a list of real questions. Open the chat widget's
+  "thought trace" on each answer and check that the cited chunks
+  actually support the claim. If they don't, your corpus is wrong
+  before your prompts are.
+
+That's enough to deploy a competent FOSS support bot for almost any
+domain. It is *not* enough to deploy a bot that wins comparisons.
+
+**The work that turns a basic KB into a Greater-mode Pipe.** The
+shell deliberately stops short of the parts that take real domain
+work to do well:
+
+- **Corpus curation.** Picking the *right* 50 sources, in the right
+  proportions, for a specific industry's questions. Killing
+  duplicates without losing complementary phrasings. Pruning content
+  that contradicts itself across versions.
+- **Bias balancing.** When a domain has multiple legitimate
+  perspectives (Core/Knots, Reformed/Catholic, charter/private,
+  pediatric/adult), authoring per-bias system prompts that make the
+  bot honestly representative of each rather than mush.
+- **Persona tuning.** Voice, refusal rules, when to suggest
+  escalation, how to talk about money/medicine/safety, what counts as
+  a "good" answer for this audience — none of this falls out of the
+  corpus on its own.
+- **Evaluation.** A per-persona regression test set of real
+  questions with judged answers, run on every corpus or prompt
+  change so you know when you've made things worse.
+- **Pipe authoring.** Packaging the corpus + biases + prompts +
+  signatures into a Pipe manifest (`lib/pipes/PipeManifestSchema`)
+  that mounts cleanly into any Greater fork.
+
+That's the work that turns a fork into a production deployment, and
+it's the work that I do for a living. If you've got a domain in mind
+and want help building the Pipe for it, [get in
+touch](https://hire.colonhyphenbracket.pink) — there's a contact
+form on every page of the live site.
+
+## Cloud usage limits
+
+The Blockstream live demo on `hire.colonhyphenbracket.pink/demo/blockstream`
+exposes a cloud-fallback chat endpoint so visitors whose browsers
+don't yet support WebGPU (or who land mid-download of the local
+model) still get an answer to their first few questions. That
+endpoint hits a paid third-party LLM, so the chat widget enforces a
+**3-call-per-session cap** on cloud fallbacks. Once the cap is hit:
+
+- The chat surfaces a one-line notice: "Cloud help is rate-limited
+  — Greater is local-only from here. The in-browser model is still
+  answering your questions."
+- Subsequent answers are served by the in-browser model and carry a
+  "Local-only · cloud rate-limited" badge instead of the usual
+  "Local · Private" one — the provenance stays honest.
+- The counter resets when the browser tab closes (it lives in
+  `sessionStorage`, not `localStorage`).
+
+For self-hosted forks the cap lives in
+`artifacts/emerald/src/llm/LLMProvider.tsx` as `CLOUD_CALL_BUDGET`
+— set it to whatever your wallet can stand, or to `Infinity` if
+you've wired your own LLM provider through `TOGETHER_API_KEY` and
+don't care.
+
 ## Pipes
 
 A "Pipe" is a curated, opinionated knowledge bundle authored by a

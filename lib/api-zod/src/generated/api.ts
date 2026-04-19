@@ -64,6 +64,18 @@ export const GetArticleResponse = zod.object({
 export const SendMessageBody = zod.object({
   message: zod.string(),
   sessionId: zod.string(),
+  biasId: zod
+    .string()
+    .optional()
+    .describe(
+      'Stable id of the active bias perspective at send time\n(e.g. \"core\", \"knots\", \"neutral\"). Used by the server to\nprepend a bias-specific system prompt so cloud fallbacks\nhonor the same stance the visitor sees in the UI.\n',
+    ),
+  biasLabel: zod
+    .string()
+    .optional()
+    .describe(
+      'Human-readable label of the active bias (e.g. \"Core\",\n\"Knots\"). Echoed back on the response so the per-message\nbias chip stays truthful even if the user toggles bias\nafter sending.\n',
+    ),
 });
 
 export const SendMessageResponse = zod.object({
@@ -95,6 +107,14 @@ export const SendMessageResponse = zod.object({
       }),
     )
     .optional(),
+  biasId: zod
+    .string()
+    .optional()
+    .describe("Echo of the biasId honored when generating this reply."),
+  biasLabel: zod
+    .string()
+    .optional()
+    .describe("Echo of the biasLabel honored when generating this reply."),
 });
 
 /**
