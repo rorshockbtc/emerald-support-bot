@@ -22,8 +22,12 @@ import type {
   ChatResponse,
   EscalateRequest,
   EscalateResponse,
+  ExtractRequest,
+  ExtractResponse,
   HealthStatus,
   ListArticlesParams,
+  SitemapRequest,
+  SitemapResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -378,6 +382,183 @@ export const useSendMessage = <
   TContext
 > => {
   return useMutation(getSendMessageMutationOptions(options));
+};
+
+/**
+ * Server-side fetch of a public http(s) URL. Returns the main article text
+as extracted by Mozilla Readability. No LLM is invoked; this is a pure
+deterministic extraction step intended to feed the in-browser embedding
+pipeline.
+
+ * @summary Fetch a URL and return cleaned, Readability-extracted text
+ */
+export const getIngestExtractUrl = () => {
+  return `/api/ingest/extract`;
+};
+
+export const ingestExtract = async (
+  extractRequest: ExtractRequest,
+  options?: RequestInit,
+): Promise<ExtractResponse> => {
+  return customFetch<ExtractResponse>(getIngestExtractUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(extractRequest),
+  });
+};
+
+export const getIngestExtractMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestExtract>>,
+    TError,
+    { data: BodyType<ExtractRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ingestExtract>>,
+  TError,
+  { data: BodyType<ExtractRequest> },
+  TContext
+> => {
+  const mutationKey = ["ingestExtract"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ingestExtract>>,
+    { data: BodyType<ExtractRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ingestExtract(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IngestExtractMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ingestExtract>>
+>;
+export type IngestExtractMutationBody = BodyType<ExtractRequest>;
+export type IngestExtractMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Fetch a URL and return cleaned, Readability-extracted text
+ */
+export const useIngestExtract = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestExtract>>,
+    TError,
+    { data: BodyType<ExtractRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ingestExtract>>,
+  TError,
+  { data: BodyType<ExtractRequest> },
+  TContext
+> => {
+  return useMutation(getIngestExtractMutationOptions(options));
+};
+
+/**
+ * @summary Fetch and parse a sitemap into a flat list of page URLs
+ */
+export const getIngestSitemapUrl = () => {
+  return `/api/ingest/sitemap`;
+};
+
+export const ingestSitemap = async (
+  sitemapRequest: SitemapRequest,
+  options?: RequestInit,
+): Promise<SitemapResponse> => {
+  return customFetch<SitemapResponse>(getIngestSitemapUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sitemapRequest),
+  });
+};
+
+export const getIngestSitemapMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestSitemap>>,
+    TError,
+    { data: BodyType<SitemapRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ingestSitemap>>,
+  TError,
+  { data: BodyType<SitemapRequest> },
+  TContext
+> => {
+  const mutationKey = ["ingestSitemap"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ingestSitemap>>,
+    { data: BodyType<SitemapRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ingestSitemap(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IngestSitemapMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ingestSitemap>>
+>;
+export type IngestSitemapMutationBody = BodyType<SitemapRequest>;
+export type IngestSitemapMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Fetch and parse a sitemap into a flat list of page URLs
+ */
+export const useIngestSitemap = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestSitemap>>,
+    TError,
+    { data: BodyType<SitemapRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ingestSitemap>>,
+  TError,
+  { data: BodyType<SitemapRequest> },
+  TContext
+> => {
+  return useMutation(getIngestSitemapMutationOptions(options));
 };
 
 /**

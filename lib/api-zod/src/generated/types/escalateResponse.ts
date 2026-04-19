@@ -5,7 +5,7 @@
  * Emerald Support Bot API
  * OpenAPI spec version: 0.1.0
  */
-import type { EscalateResponseTicket } from "./escalateResponseTicketPayload";
+import type { EscalateResponseTicket } from "./escalateResponseTicket";
 
 export interface EscalateResponse {
   success: boolean;

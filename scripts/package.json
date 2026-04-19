@@ -6,12 +6,16 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-articles": "tsx ./src/seed-articles.ts",
+    "build-bitcoin-seed": "tsx ./src/build-bitcoin-seed.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@workspace/db": "workspace:*"
+    "@mozilla/readability": "^0.6.0",
+    "@workspace/db": "workspace:*",
+    "jsdom": "^29.0.2"
   },
   "devDependencies": {
+    "@types/jsdom": "^28.0.1",
     "@types/node": "catalog:",
     "tsx": "catalog:"
   }

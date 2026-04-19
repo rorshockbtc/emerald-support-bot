@@ -17,8 +17,8 @@ This repository was originally `emerald-support-bot` — a Blockstream-specific 
 | Greater shell (landing, six personas, case studies, contact form) | ✅ Live |
 | Blockstream / FinTech live demo | ✅ Live (ported from Emerald) |
 | Browser-local LLM (WebGPU + Transformers.js) | ✅ Wired (Llama-3.2-1B-Instruct q4f16 + bge-small-en-v1.5, IndexedDB vector store, thought-trace UI, cloud fallback) |
-| Generic web-scraping ingestion | 🚧 Planned |
-| Bitcoin knowledge ingestion (Core/Knots/OpTech/BitcoinTalk) with bias toggle | 🚧 Planned |
+| Generic web-scraping ingestion | ✅ Live (server-side Readability extraction + sitemap walker; in-browser chunking, embedding, and IndexedDB persistence; no LLM during ingestion) |
+| Bitcoin knowledge ingestion (Core/Knots/OpTech/BitcoinTalk) with bias tagging | ✅ Builder script live (bias toggle UI lands in Phase 5); built bundle is gitignored |
 | Pipes.pink integration (proprietary persona weights) | 🚧 Stubbed (gitignored) |
 | OpenClaw signed-corpus catalog | 🪐 Aspirational — see `/openclaw` |
 
@@ -106,9 +106,43 @@ The Greater frontend is served at `/` (or the artifact's preview path). The Bloc
 | `/demo/:slug` | "Coming online" holding screen for non-FinTech personas |
 | `/demo/blockstream` | Live Blockstream support demo (FinTech persona showcase) |
 
+## Knowledge ingestion
+
+Greater's RAG corpus has two layers:
+
+1. **The generic, in-product scraper.** Open the chat widget, click the
+   ⚙ settings icon, and choose **Manage knowledge base**. Paste a URL or
+   sitemap and it will be fetched server-side (`POST /api/ingest/extract`
+   and `POST /api/ingest/sitemap`), cleaned with Mozilla Readability,
+   chunked deterministically in the browser, embedded with the local
+   sentence-transformer, and persisted to IndexedDB. **No LLM is invoked
+   during ingestion** — extraction and embedding are deterministic.
+
+2. **The Bitcoin knowledge bundle (proprietary).** The builder script
+   under `scripts/src/build-bitcoin-seed.ts` aggregates Bitcoin OpTech
+   newsletters, the last 12 months of merged commits from
+   `bitcoin/bitcoin` (tagged `bias: 'core'`) and `bitcoinknots/bitcoin`
+   (tagged `bias: 'knots'`), plus a curated list of high-signal
+   BitcoinTalk threads from
+   `scripts/src/bitcoin-seed/bitcointalk-threads.json`. The script is
+   **FOSS**; the resulting `data/seeds/bitcoin.json` bundle is
+   **gitignored** — that's the curation work that makes Greater
+   valuable. To regenerate it yourself, set a fine-grained read-only
+   `GITHUB_TOKEN` (anonymous requests rate-limit at 60/hr) and run:
+
+   ```
+   GITHUB_TOKEN=ghp_xxx pnpm --filter @workspace/scripts run build-bitcoin-seed
+   cp data/seeds/bitcoin.json artifacts/emerald/public/seeds/bitcoin.json
+   ```
+
+   The Blockstream demo loads the bundle from `/seeds/bitcoin.json` on
+   first run and shows a one-time progress indicator while it's being
+   embedded into IndexedDB. Subsequent loads see a meta flag and skip
+   the work.
+
 ## Contributing
 
-The shell is MIT-licensed. PRs and forks are welcome and encouraged. The proprietary persona-tuned weights, pipes data, and curator-specific corpora that make production deployments work live in `data/pipes/` and `data/weights/`, both of which are gitignored — that is the part that's for hire.
+The shell is MIT-licensed. PRs and forks are welcome and encouraged. The proprietary persona-tuned weights, pipes data, and curator-specific corpora that make production deployments work live in `data/pipes/`, `data/weights/`, and `data/seeds/`, all of which are gitignored — that is the part that's for hire.
 
 ## Credits
 

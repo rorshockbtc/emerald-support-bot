@@ -5,19 +5,12 @@
  * Emerald Support Bot API
  * OpenAPI spec version: 0.1.0
  */
-
-export type EscalateResponseTicketComment = {
-  body: string;
-};
-
-export type EscalateResponseTicketCustomField = {
-  id: string;
-  value: string;
-};
+import type { EscalateResponseTicketComment } from "./escalateResponseTicketComment";
+import type { EscalateResponseTicketCustomFieldsItem } from "./escalateResponseTicketCustomFieldsItem";
 
 export type EscalateResponseTicket = {
   subject: string;
   comment: EscalateResponseTicketComment;
   priority: string;
-  custom_fields: EscalateResponseTicketCustomField[];
+  custom_fields: EscalateResponseTicketCustomFieldsItem[];
 };

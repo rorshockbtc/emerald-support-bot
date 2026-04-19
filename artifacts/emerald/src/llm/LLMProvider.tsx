@@ -11,6 +11,7 @@ import type {
   ChatTurn,
   EmbedResult,
   GenerateResult,
+  IngestProgress,
   LocalAnswer,
   ModelInfo,
   ModelStatus,
@@ -18,6 +19,7 @@ import type {
   ThoughtTrace,
   WorkerOutbound,
 } from "./types";
+import { ingestUrl, type IngestOptions, type IngestResult } from "./ingest";
 // IMPORTANT: import constants from the worker-safe config module, NOT
 // from `./llmWorker`. Importing the worker module on the main thread
 // would drag the entire @huggingface/transformers runtime into the
@@ -34,12 +36,37 @@ import {
   clearAll,
   countDocuments,
   getCorpusMeta,
+  getMetaFlag,
   putChunkWithVector,
   setCorpusMeta,
+  setMetaFlag,
   topK,
 } from "./vectorStore";
 
-const SEED_CORPUS_VERSION = "v1-seed-blockstream";
+const SEED_CORPUS_VERSION = "v2-seed-blockstream";
+const BITCOIN_BUNDLE_FLAG = "bitcoin-bundle";
+const BITCOIN_BUNDLE_VERSION = "v1";
+const BITCOIN_BUNDLE_URL = `${import.meta.env.BASE_URL}seeds/bitcoin.json`;
+
+interface BitcoinBundleDoc {
+  source_url: string;
+  source_label: string;
+  source_type?: string;
+  bias?: "core" | "knots" | "neutral";
+  chunks: { text: string; chunk_index: number }[];
+}
+
+interface BitcoinBundle {
+  version?: string;
+  generated_at?: string;
+  documents: BitcoinBundleDoc[];
+}
+
+export interface BundleLoadProgress {
+  total_chunks: number;
+  done_chunks: number;
+  done: boolean;
+}
 
 /**
  * Top-level LLM provider. MUST be mounted above the router so that
@@ -63,6 +90,16 @@ interface LLMContextValue {
    * `status === "ready"` first and fall back to cloud otherwise.
    */
   ask: (history: ChatTurn[], userMessage: string) => Promise<LocalAnswer>;
+  /** Embed a single text chunk via the in-browser sentence-transformer. */
+  embed: (text: string) => Promise<number[]>;
+  /** Run a full ingestion (single page or sitemap) and store chunks locally. */
+  ingest: (options: IngestOptions) => Promise<IngestResult>;
+  /**
+   * Progress for the (optional) Bitcoin knowledge bundle. `null` when the
+   * bundle is not present or already installed; an object with counts
+   * while it is being indexed for the first time.
+   */
+  bundleProgress: BundleLoadProgress | null;
   clearCacheAndReload: () => Promise<void>;
 }
 
@@ -74,6 +111,8 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
   const [loadStageLabel, setLoadStageLabel] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);
+  const [bundleProgress, setBundleProgress] =
+    useState<BundleLoadProgress | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
   type Pending = {
@@ -123,15 +162,91 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
     }
     // Re-embed everything (cache schema changed or first run).
     await clearAll();
+    const indexedAt = Date.now();
     for (const chunk of SEED_CORPUS) {
       const vec = await callWorker<number[]>("embed", { text: chunk.text });
-      await putChunkWithVector(chunk, vec);
+      await putChunkWithVector(
+        {
+          ...chunk,
+          bias: chunk.bias ?? "neutral",
+          source_type: chunk.source_type ?? "seed",
+          indexed_at: chunk.indexed_at ?? indexedAt,
+        },
+        vec,
+      );
     }
     await setCorpusMeta(
       SEED_CORPUS_VERSION,
       EMBEDDER_MODEL_ID,
       SEED_CORPUS.length,
     );
+  }, [callWorker]);
+
+  /**
+   * On first run after seed corpus is installed, attempt to load the
+   * proprietary Bitcoin knowledge bundle from `/seeds/bitcoin.json`.
+   * The bundle is gitignored — the FOSS shell ships without it, so a
+   * 404 is normal and silent. When present, it is embedded once and
+   * persisted to IndexedDB; subsequent loads see the meta flag and
+   * skip the work.
+   */
+  const ensureBitcoinBundle = useCallback(async (): Promise<void> => {
+    const flag = await getMetaFlag(BITCOIN_BUNDLE_FLAG);
+    if (flag?.value === BITCOIN_BUNDLE_VERSION) return;
+    let bundle: BitcoinBundle | null = null;
+    try {
+      const res = await fetch(BITCOIN_BUNDLE_URL, { cache: "no-cache" });
+      if (!res.ok) {
+        // 404 is expected on FOSS deployments without the proprietary
+        // bundle. Mark the flag so we don't keep re-checking.
+        await setMetaFlag(BITCOIN_BUNDLE_FLAG, "absent");
+        return;
+      }
+      bundle = (await res.json()) as BitcoinBundle;
+    } catch {
+      await setMetaFlag(BITCOIN_BUNDLE_FLAG, "absent");
+      return;
+    }
+
+    if (!bundle?.documents?.length) {
+      await setMetaFlag(BITCOIN_BUNDLE_FLAG, "absent");
+      return;
+    }
+
+    const totalChunks = bundle.documents.reduce(
+      (n, d) => n + d.chunks.length,
+      0,
+    );
+    setBundleProgress({ total_chunks: totalChunks, done_chunks: 0, done: false });
+    let done = 0;
+    const installedAt = Date.now();
+    for (const doc of bundle.documents) {
+      const bias = doc.bias ?? "neutral";
+      for (const ch of doc.chunks) {
+        const vec = await callWorker<number[]>("embed", { text: ch.text });
+        await putChunkWithVector(
+          {
+            id: `${doc.source_url}#${ch.chunk_index}`,
+            source_url: doc.source_url,
+            source_label: doc.source_label,
+            chunk_index: ch.chunk_index,
+            text: ch.text,
+            bias,
+            source_type: "bitcoin-bundle",
+            indexed_at: installedAt,
+          },
+          vec,
+        );
+        done += 1;
+        setBundleProgress({
+          total_chunks: totalChunks,
+          done_chunks: done,
+          done: false,
+        });
+      }
+    }
+    await setMetaFlag(BITCOIN_BUNDLE_FLAG, BITCOIN_BUNDLE_VERSION);
+    setBundleProgress({ total_chunks: totalChunks, done_chunks: done, done: true });
   }, [callWorker]);
 
   const startWorker = useCallback(() => {
@@ -169,9 +284,11 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           if (msg.stage === "embedder") {
             // Build the seed-corpus vector index in the background while
             // the LLM is still downloading. Embedding 20 chunks is fast.
-            ensureSeedCorpus().catch((err) => {
-              console.error("Seed corpus indexing failed:", err);
-            });
+            ensureSeedCorpus()
+              .then(() => ensureBitcoinBundle())
+              .catch((err) => {
+                console.error("Seed corpus indexing failed:", err);
+              });
           } else if (msg.stage === "all") {
             setStatus("ready");
             setProgress(100);
@@ -210,7 +327,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       setStatus("error");
       setErrorMessage((err as Error).message);
     }
-  }, [ensureSeedCorpus]);
+  }, [ensureSeedCorpus, ensureBitcoinBundle]);
 
   // Kick off the worker after first paint so the page stays interactive
   // through the model download.
@@ -310,6 +427,29 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
     [loadedAt],
   );
 
+  const embed = useCallback(
+    (text: string) => callWorker<number[]>("embed", { text }),
+    [callWorker],
+  );
+
+  const ingest = useCallback<LLMContextValue["ingest"]>(
+    async (options) => {
+      if (status !== "ready") {
+        // Surface a clear error to the orchestrator's progress callback.
+        options.onProgress?.({
+          total_pages: 0,
+          done_pages: 0,
+          done_chunks: 0,
+          stage: "error",
+          error: "Local model not ready — wait for download to finish.",
+        } satisfies IngestProgress);
+        throw new Error("Local model not ready");
+      }
+      return ingestUrl(embed, options);
+    },
+    [status, embed],
+  );
+
   const value: LLMContextValue = {
     status,
     progress,
@@ -317,6 +457,9 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
     errorMessage,
     modelInfo,
     ask,
+    embed,
+    ingest,
+    bundleProgress,
     clearCacheAndReload,
   };
 

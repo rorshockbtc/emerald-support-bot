@@ -98,6 +98,42 @@ export const SendMessageResponse = zod.object({
 });
 
 /**
+ * Server-side fetch of a public http(s) URL. Returns the main article text
+as extracted by Mozilla Readability. No LLM is invoked; this is a pure
+deterministic extraction step intended to feed the in-browser embedding
+pipeline.
+
+ * @summary Fetch a URL and return cleaned, Readability-extracted text
+ */
+export const IngestExtractBody = zod.object({
+  url: zod.string().url(),
+});
+
+export const IngestExtractResponse = zod.object({
+  url: zod.string(),
+  title: zod.string().nullish(),
+  byline: zod.string().nullish(),
+  contentText: zod.string(),
+  contentHtml: zod.string().nullish(),
+  length: zod.number(),
+  fetchedAt: zod.date(),
+  warning: zod.string().nullish(),
+});
+
+/**
+ * @summary Fetch and parse a sitemap into a flat list of page URLs
+ */
+export const IngestSitemapBody = zod.object({
+  url: zod.string().url(),
+});
+
+export const IngestSitemapResponse = zod.object({
+  sitemapUrl: zod.string(),
+  urls: zod.array(zod.string()),
+  truncated: zod.boolean(),
+});
+
+/**
  * Generates a Zendesk-formatted support ticket payload
  * @summary Escalate to human support
  */
@@ -108,7 +144,7 @@ export const EscalateTicketBody = zod.object({
     zod.object({
       role: zod.string(),
       content: zod.string(),
-      timestamp: zod.coerce.date(),
+      timestamp: zod.date(),
     }),
   ),
 });

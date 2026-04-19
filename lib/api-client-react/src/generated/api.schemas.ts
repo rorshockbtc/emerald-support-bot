@@ -43,6 +43,31 @@ export interface ChatResponse {
   relatedArticles?: Article[];
 }
 
+export interface ExtractRequest {
+  url: string;
+}
+
+export interface ExtractResponse {
+  url: string;
+  title?: string | null;
+  byline?: string | null;
+  contentText: string;
+  contentHtml?: string | null;
+  length: number;
+  fetchedAt: string;
+  warning?: string | null;
+}
+
+export interface SitemapRequest {
+  url: string;
+}
+
+export interface SitemapResponse {
+  sitemapUrl: string;
+  urls: string[];
+  truncated: boolean;
+}
+
 export interface ChatMessage {
   role: string;
   content: string;
@@ -59,7 +84,7 @@ export type EscalateResponseTicketComment = {
   body: string;
 };
 
-export type EscalateResponseTicketCustomField = {
+export type EscalateResponseTicketCustomFieldsItem = {
   id: string;
   value: string;
 };
@@ -68,7 +93,7 @@ export type EscalateResponseTicket = {
   subject: string;
   comment: EscalateResponseTicketComment;
   priority: string;
-  custom_fields: EscalateResponseTicketCustomField[];
+  custom_fields: EscalateResponseTicketCustomFieldsItem[];
 };
 
 export interface EscalateResponse {

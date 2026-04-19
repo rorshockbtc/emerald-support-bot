@@ -14,6 +14,8 @@ tags:
     description: Help center article operations
   - name: chat
     description: Chat and bot interaction operations
+  - name: ingest
+    description: Server-side scraping and extraction for the in-browser knowledge base
 paths:
   /healthz:
     get:
@@ -94,6 +96,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatResponse"
+  /ingest/extract:
+    post:
+      operationId: ingestExtract
+      tags: [ingest]
+      summary: Fetch a URL and return cleaned, Readability-extracted text
+      description: |
+        Server-side fetch of a public http(s) URL. Returns the main article text
+        as extracted by Mozilla Readability. No LLM is invoked; this is a pure
+        deterministic extraction step intended to feed the in-browser embedding
+        pipeline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        "200":
+          description: Extracted article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractResponse"
+  /ingest/sitemap:
+    post:
+      operationId: ingestSitemap
+      tags: [ingest]
+      summary: Fetch and parse a sitemap into a flat list of page URLs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SitemapRequest"
+      responses:
+        "200":
+          description: Sitemap URL list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SitemapResponse"
   /escalate:
     post:
       operationId: escalateTicket
@@ -196,6 +239,66 @@ components:
         - sources
         - ciBreakdown
         - lastUpdated
+    ExtractRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
+    ExtractResponse:
+      type: object
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+          nullable: true
+        byline:
+          type: string
+          nullable: true
+        contentText:
+          type: string
+        contentHtml:
+          type: string
+          nullable: true
+        length:
+          type: integer
+        fetchedAt:
+          type: string
+          format: date-time
+        warning:
+          type: string
+          nullable: true
+      required:
+        - url
+        - contentText
+        - length
+        - fetchedAt
+    SitemapRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
+    SitemapResponse:
+      type: object
+      properties:
+        sitemapUrl:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+        truncated:
+          type: boolean
+      required:
+        - sitemapUrl
+        - urls
+        - truncated
     SourceReference:
       type: object
       properties:

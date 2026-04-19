@@ -12,12 +12,57 @@ export interface ChatTurn {
   content: string;
 }
 
+/**
+ * Bias label attached to ingested chunks.
+ *
+ *  - `core`     — content originating from the bitcoin/bitcoin reference
+ *                 implementation (commits, release notes, official docs).
+ *  - `knots`    — content from the bitcoinknots/bitcoin alternative client.
+ *  - `neutral`  — third-party content with no fork affiliation (OpTech,
+ *                 BitcoinTalk, generic web pages indexed by users).
+ *
+ * Tagged at ingestion time only. The toggle that filters retrieval by
+ * bias is built in Task #5; this task just stamps the metadata.
+ */
+export type Bias = "core" | "knots" | "neutral";
+
 export interface KbChunk {
   id: string;
   source_url: string;
   source_label: string;
   chunk_index: number;
   text: string;
+  /** Optional bias tag; absent on legacy chunks (treated as 'neutral'). */
+  bias?: Bias;
+  /** Optional grouping for "Knowledge" UI: which ingested source bundle it came from. */
+  source_type?: "seed" | "user-page" | "user-sitemap" | "bitcoin-bundle";
+  /** Unix ms when the chunk was indexed. */
+  indexed_at?: number;
+}
+
+/** Aggregate stats per source_url, used by the Knowledge panel. */
+export interface IndexedSource {
+  source_url: string;
+  source_label: string;
+  chunk_count: number;
+  source_type?: KbChunk["source_type"];
+  bias?: Bias;
+  indexed_at?: number;
+}
+
+export interface IngestProgress {
+  /** Pages discovered (1 for single-page mode, N for sitemap). */
+  total_pages: number;
+  /** Pages whose extraction + chunking + embedding finished. */
+  done_pages: number;
+  /** Total chunks added so far across all pages. */
+  done_chunks: number;
+  /** Stage label for the UI. */
+  stage: "discovering" | "extracting" | "embedding" | "complete" | "error";
+  /** URL currently being worked on, if any. */
+  current_url?: string;
+  /** Error message; only set when stage === 'error'. */
+  error?: string;
 }
 
 export interface RetrievedChunk extends KbChunk {

@@ -1,10 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed } from 'lucide-react';
+import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
 import { ChatMessage, type MessageProps } from './ChatMessage';
 import { SecurityPanel } from './SecurityPanel';
+import { KnowledgePanel } from './KnowledgePanel';
 import { ModelInfoPopover } from '@/llm/ModelInfoPopover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useLLM } from '@/llm/LLMProvider';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -21,6 +28,7 @@ export function ChatWidget() {
   const [startTime] = useState(() => new Date());
   const [input, setInput] = useState('');
   const [showSecurityPanel, setShowSecurityPanel] = useState(false);
+  const [showKnowledgePanel, setShowKnowledgePanel] = useState(false);
   const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
   const [isLocalGenerating, setIsLocalGenerating] = useState(false);
   const [messages, setMessages] = useState<MessageProps[]>([
@@ -235,6 +243,23 @@ export function ChatWidget() {
               </div>
               <div className="flex items-center gap-1">
                 <ModelInfoPopover />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                      title="Settings"
+                      aria-label="Settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuItem onSelect={() => setShowKnowledgePanel(true)}>
+                      <Database className="w-3.5 h-3.5 mr-2" />
+                      Manage knowledge base
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <button
                   onClick={handleEscalate}
                   disabled={escalateMutation.isPending}
@@ -394,6 +419,11 @@ export function ChatWidget() {
       <SecurityPanel
         isOpen={showSecurityPanel}
         onClose={() => setShowSecurityPanel(false)}
+      />
+
+      <KnowledgePanel
+        isOpen={showKnowledgePanel}
+        onClose={() => setShowKnowledgePanel(false)}
       />
     </>
   );

@@ -54,10 +54,12 @@ Thumbs.db
 data/pipes/
 data/knowledge-base/
 data/weights/
+data/seeds/
 artifacts/emerald/data/pipes/
 artifacts/emerald/data/knowledge-base/
 artifacts/emerald/data/weights/
 artifacts/emerald/public/weights/
+artifacts/emerald/public/seeds/
 *.private.md
 *.interview.md
 *.gguf
