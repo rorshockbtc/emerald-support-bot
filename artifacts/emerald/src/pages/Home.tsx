@@ -8,7 +8,11 @@ import { ContactCTASection } from "@/components/ContactCTASection";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function Home() {
-  useDocumentTitle("");
+  // Pass null so the rich static <title> from index.html
+  // ("Greater — sovereign support bots, FOSS by default") survives
+  // SPA navigation back to /, instead of getting truncated to just
+  // "Greater".
+  useDocumentTitle(null);
   return (
     <>
       <Hero />
