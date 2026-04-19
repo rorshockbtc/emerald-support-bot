@@ -1,122 +1,116 @@
-# Emerald — Blockstream AI Support Bot
+# Greater
 
-A high-fidelity prototype demonstrating "Sovereign Support" principles: privacy-first, triage-heavy, and accessible. Built for Blockstream as a design showcase and job interview portfolio piece.
+Sovereign-by-default support bots. FOSS shell, persona-tuned demos, browser-local inference.
 
-## Overview
+Greater is a free, open-source shell for industry-specific support chatbots that run entirely in the visitor's browser. There is no per-message API cost, no third-party data egress in the default flow, and no vendor mediating between you and your customers.
 
-Emerald is a floating chat widget that sits atop a Blockstream help center article page, providing intelligent support for account security issues. The bot leverages local-first processing, PII anonymization, and tiered trust scoring to deliver secure, transparent AI-assisted troubleshooting.
+The shell ships with six persona templates — **Startups**, **Faith-Based Organizations**, **Private Schools & Families**, **Small Businesses**, **HealthTech**, and **FinTech** — each with a distinct declared perspective, a curated corpus pipeline, and its own escalation flow. The live demo on `/demo/blockstream` is the FinTech persona, ported from the original Emerald support bot prototype.
 
-**Live Features:**
-- **Support Article Page**: Blockstream-styled help center article (light theme) about unauthorized login activity
-- **Floating Chat Widget**: Dark-themed, Zendesk-style chat in bottom-right corner with full-screen toggle
-- **Security Triage**: Keyword detection triggers high-priority security banner + walkthrough panel
-- **Trust Ribbon**: Tiered visual indicators (green ≥92%, yellow 75–91%, amber <75%)
-- **LLM Integration**: Together.AI (Llama 3.3 70B) with local fallback responses
-- **PII Scrubbing**: Local regex-based anonymization (emails, phones, BTC addresses, seed phrases)
-- **Zendesk Export**: Escalation generates spec-conformant JSON payload with scrubbed transcript
-- **Blockstream Branding**: Uses din-2014 font from Adobe Typekit (chx2fbn)
+Greater is built and maintained by [colonhyphenbracket](https://hire.colonhyphenbracket.pink). The shell is free; the corpus curation, integration, and architectural work for production deployments is for hire.
 
-## Tech Stack
+## Project status
 
-- **Frontend**: React 18 + Vite, TypeScript, Tailwind CSS, Framer Motion
-- **Backend**: Express 5, PostgreSQL + Drizzle ORM
-- **LLM**: Together.AI (Llama-3.3-70B-Instruct-Turbo)
-- **Validation**: Zod + Drizzle Zod
-- **API Codegen**: Orval (OpenAPI → React Query + Zod)
-- **Monorepo**: pnpm workspaces
+This repository was originally `emerald-support-bot` — a Blockstream-specific demo. It has been pivoted into Greater, the platform. The Blockstream demo is preserved at `/demo/blockstream` as the live FinTech showcase.
+
+| Area | Status |
+|------|--------|
+| Greater shell (landing, six personas, case studies, contact form) | ✅ Live |
+| Blockstream / FinTech live demo | ✅ Live (ported from Emerald) |
+| Browser-local LLM (WebGPU + Transformers.js) | 🚧 In progress |
+| Generic web-scraping ingestion | 🚧 Planned |
+| Bitcoin knowledge ingestion (Core/Knots/OpTech/BitcoinTalk) with bias toggle | 🚧 Planned |
+| Pipes.pink integration (proprietary persona weights) | 🚧 Stubbed (gitignored) |
+| OpenClaw signed-corpus catalog | 🪐 Aspirational — see `/openclaw` |
 
 ## Architecture
 
 ```
-emerald-support-bot/
+greater/
 ├── artifacts/
-│   ├── api-server/          Express API + intent matching + LLM
-│   └── emerald/             React + Vite frontend
+│   ├── api-server/          Express API — Blockstream demo intent matcher + LLM
+│   └── emerald/             Greater frontend (React + Vite, wouter routing)
+│       ├── src/
+│       │   ├── pages/
+│       │   │   ├── Home.tsx              Greater landing — six persona cards
+│       │   │   ├── PersonaPage.tsx       Per-persona case study
+│       │   │   ├── DemoHolding.tsx       "Coming online" holding screen
+│       │   │   ├── BlockstreamDemo.tsx   Live FinTech demo (Blockstream branded)
+│       │   │   ├── About.tsx             About Greater
+│       │   │   └── OpenClaw.tsx          Aspirational OpenClaw page
+│       │   ├── components/
+│       │   │   ├── Layout.tsx            Greater nav + footer + contact CTA
+│       │   │   ├── ContactFormModal.tsx  Web3Forms direct-POST contact form
+│       │   │   ├── ChatWidget.tsx        Blockstream demo chat widget
+│       │   │   └── ...
+│       │   ├── data/
+│       │   │   └── personas.ts           Single source of truth for the 6 bots
+│       │   └── index.css                 CHB design system tokens
+│       └── public/images/personas/       Persona hero images
 ├── lib/
 │   ├── api-spec/            OpenAPI 3.1 spec + Orval config
 │   ├── api-client-react/    Generated React Query hooks
 │   ├── api-zod/             Generated Zod schemas
 │   └── db/                  Drizzle ORM + PostgreSQL schema
-└── scripts/                 Seed articles utility
+└── data/                    Gitignored: pipes/, weights/ (production-only)
 ```
 
-## Running Locally
+## Design system
+
+Greater follows the [colonhyphenbracket](https://hire.colonhyphenbracket.pink) design system:
+
+- **Pink** `#FE299E` — primary, accent, ring
+- **Blue** `#01a9f4` — secondary callouts and iconography
+- **Inter** — body & headings
+- **JetBrains Mono** — labels, eyebrows, microtype
+- **Major Mono Display** — wordmark only (the `>` in `>greater`)
+- No box-shadows; elevation is implemented via overlay utilities (`.hover-elevate`, `.active-elevate`)
+- Pill buttons; thin borders; lots of negative space
+
+The Blockstream demo route deliberately retains the Blockstream brand styling (dark nav, emerald accents, light article body) to remain an authentic representation of the original prototype.
+
+## Running locally
 
 ### Prerequisites
+
 - Node.js 24+
 - pnpm
-- PostgreSQL (Replit provides it; use `DATABASE_URL` env var)
-- Together.AI API key (`TOGETHER_API_KEY` env var)
+- PostgreSQL (Replit provides via `DATABASE_URL`)
+- A [Web3Forms](https://web3forms.com) access key for the contact form (`VITE_WEB3FORMS_ACCESS_KEY`)
+- A [Together.AI](https://together.ai) API key for the Blockstream demo's server-side fallback (`TOGETHER_API_KEY`)
 
 ### Setup
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Run database migrations
 pnpm --filter @workspace/db run push
-
-# Seed help articles
 pnpm --filter @workspace/scripts run seed-articles
-
-# Start both servers in dev mode
 pnpm run dev
 ```
 
-The frontend runs at `http://localhost:5173` (or Replit preview), API at `http://localhost:8080`.
+The Greater frontend is served at `/` (or the artifact's preview path). The Blockstream live demo is at `/demo/blockstream`. The API server runs on its own port.
 
-## API Endpoints
+## Routes
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/api/articles` | List help articles (supports `?q=search&category=filter`) |
-| GET | `/api/articles/:id` | Get single article |
-| POST | `/api/chat` | Send message, get bot response |
-| POST | `/api/escalate` | Generate Zendesk ticket payload |
+| Route | Page |
+|-------|------|
+| `/` | Greater landing — six persona cards |
+| `/about` | About Greater |
+| `/openclaw` | OpenClaw aspirational page |
+| `/personas/:slug` | Per-persona case study (one of: `startups`, `faith`, `schools`, `small-business`, `healthtech`, `fintech`) |
+| `/demo/:slug` | "Coming online" holding screen for non-FinTech personas |
+| `/demo/blockstream` | Live Blockstream support demo (FinTech persona showcase) |
 
-## Design & Spec Compliance
+## Contributing
 
-This prototype implements the "Sovereign Support" architecture from the specification document:
-
-- **92% Security Weighting**: Trust scores reflect high-confidence thresholds (≥92% = "Verified")
-- **Local-First Privacy**: PII scrubbing happens client-side and server-side before any external API call
-- **Transparent Triage**: Security keywords trigger immediate escalation path; no silent failures
-- **Blockstream Branding**: Uses official din-2014 typeface from Blockstream's design system
-- **Zendesk Spec Alignment**: Escalation payload follows the exact JSON structure specified (nested `ticket.comment.body`, `ticket.custom_fields[session_hash]`)
-
-## Key Files
-
-- **Frontend**: `artifacts/emerald/src/pages/Home.tsx` (article + chat widget layout)
-- **Chat Widget**: `artifacts/emerald/src/components/ChatWidget.tsx`
-- **Chat Logic**: `artifacts/api-server/src/routes/chat.ts`
-- **Intent Matching & PII Scrubbing**: `artifacts/api-server/src/lib/intent-matcher.ts`
-- **LLM Integration**: `artifacts/api-server/src/lib/llm.ts`
-- **Database Schema**: `lib/db/src/schema/articles.ts`
-
-## Deployment
-
-Push this repo to your Replit workspace, configure environment variables (`TOGETHER_API_KEY`, `DATABASE_URL`), and use Replit's deploy button to publish.
-
-## Interview Highlights
-
-1. **Spec Compliance**: Implements exact Zendesk payload structure and 92% trust weighting from design spec
-2. **Privacy-First Design**: Local PII scrubbing prevents sensitive data from reaching cloud APIs
-3. **Type-Safe API Chain**: OpenAPI spec → Zod schemas → React Query hooks (end-to-end validation)
-4. **Accessible UI**: Progressive disclosure (expandable trust ribbon), keyboard navigation, ARIA labels
-5. **Production-Ready Patterns**: Error handling, fallback responses, proper logging (no PII in logs)
-
-## Future Considerations
-
-- **Phase 2**: Web-LLM for offline support, PGP session signing (Sovereign Signature Module)
-- **Phase 2**: ONNX local inference for high-frequency queries (35–50% token reduction)
-- **Governing Agent**: Periodic audit of knowledge base against GitHub docs (freshness trigger)
-- **Emergency Cache**: Offline fallback with top 20 critical troubleshooting markdown files
+The shell is MIT-licensed. PRs and forks are welcome and encouraged. The proprietary persona-tuned weights, pipes data, and curator-specific corpora that make production deployments work live in `data/pipes/` and `data/weights/`, both of which are gitignored — that is the part that's for hire.
 
 ## Credits
 
-Built as a proactive design challenge demonstrating "Product-Engineering" crossover. Incorporates principles from the Blockstream Emerald Sovereign Support specification document.
+- Original Emerald prototype: built as a Blockstream interview portfolio piece
+- Greater pivot: turning the prototype into a platform that scales to six industries
+- Design system: colonhyphenbracket
+- Live demo content: derived from public Blockstream help center material; not an official Blockstream product
 
----
+## License
 
-**Status**: Interview-ready prototype. Not production-hardened; suitable for demonstration and portfolio showcase.
+MIT — see `LICENSE`.

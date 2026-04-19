@@ -1,244 +1,231 @@
-import React from 'react';
-import { ShieldAlert, Lock, KeyRound, Smartphone, AlertTriangle, ChevronRight, ExternalLink, CheckCircle2 } from 'lucide-react';
-import { ChatWidget } from '@/components/ChatWidget';
+import React from "react";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import { ArrowRight, Lock, Cpu, FileText, AlertCircle } from "lucide-react";
+import { personas, type Persona } from "@/data/personas";
 
-const sidebarLinks = [
-  { label: "Unauthorized login activity", active: true },
-  { label: "Recover a lost wallet" },
-  { label: "Enable 2FA on your account" },
-  { label: "Fix issues connecting Jade via USB" },
-  { label: "Fix issues pairing Jade via Bluetooth" },
-  { label: "Perform a factory reset" },
-];
+const BASE = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL;
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white text-foreground flex flex-col">
-      <nav className="bg-[#111316] text-white sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2.5">
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                  <circle cx="16" cy="16" r="15" stroke="#10B981" strokeWidth="2" />
-                  <path d="M10 16.5L14.5 21L23 11" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-                <span className="font-bold text-lg tracking-tight">Blockstream</span>
-              </div>
-            </div>
-
-            <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
-              <a href="https://blockstream.com/products" className="hover:text-white transition-colors">Products</a>
-              <a href="https://blockstream.com/newsroom" className="hover:text-white transition-colors">Newsroom</a>
-              <a href="https://blockstream.com/developers" className="hover:text-white transition-colors">Developers</a>
-              <a href="https://blockstream.com/company" className="hover:text-white transition-colors">Company</a>
-              <a href="https://store.blockstream.com" className="hover:text-white transition-colors">Store</a>
-              <a href="https://help.blockstream.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">Support</a>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="border-b border-gray-200 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <a href="https://help.blockstream.com" className="text-emerald-600 hover:text-emerald-700 transition-colors">Blockstream Help Center</a>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <a href="#" className="text-emerald-600 hover:text-emerald-700 transition-colors">Account Security</a>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-muted-foreground">Unauthorized login activity</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex gap-12">
-            <aside className="hidden lg:block w-64 shrink-0">
-              <h3 className="text-sm font-bold text-foreground mb-4 uppercase tracking-wider">Account Security</h3>
-              <nav className="space-y-1">
-                {sidebarLinks.map((link) => (
-                  <a
-                    key={link.label}
-                    href="#"
-                    className={
-                      link.active
-                        ? "block text-sm py-2 px-3 rounded-lg bg-emerald-50 text-emerald-700 font-medium border border-emerald-100"
-                        : "block text-sm py-2 px-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-gray-50 transition-colors"
-                    }
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </nav>
-            </aside>
-
-            <main className="flex-1 min-w-0 max-w-3xl">
-              <article>
-                <h1 className="text-3xl sm:text-4xl font-bold text-foreground leading-tight mb-6">
-                  What to do when you receive an unauthorized login notification
-                </h1>
-
-                <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-                  If you received an email indicating that someone logged in to your Blockstream account from an unfamiliar device or location, this guide will help you understand what happened and take the appropriate steps to protect your funds.
-                </p>
-
-                <div className="callout-note mb-8">
-                  <p className="text-sm leading-relaxed">
-                    <strong>Don't panic.</strong> Receiving a login notification does not necessarily mean your funds are at risk. Blockstream accounts are protected by multiple layers of security, and in many cases the activity is from a device or network you simply don't recognize at first.
-                  </p>
-                </div>
-
-                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">
-                  Step 1: Verify the login activity
-                </h2>
-                <p className="text-base text-muted-foreground leading-relaxed mb-4">
-                  Before taking any action, review the details in the notification email:
-                </p>
-                <ul className="space-y-3 mb-8 ml-1">
-                  <ListItem>Check the <strong>device name</strong> and <strong>operating system</strong> — it may be a device you use but don't immediately recognize (e.g., a work laptop, tablet, or new phone).</ListItem>
-                  <ListItem>Check the <strong>IP address and location</strong> — VPNs and mobile networks can show unfamiliar locations even for legitimate logins.</ListItem>
-                  <ListItem>Check the <strong>timestamp</strong> — does it correspond to a time you were actively using your account?</ListItem>
-                </ul>
-
-                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-8">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-emerald-800 mb-1">If you recognize the activity</p>
-                      <p className="text-sm text-emerald-700/80">No further action is needed. These notifications are a normal part of Blockstream's security monitoring. You can review your active sessions at any time in your account settings.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4 flex items-center gap-3">
-                  <ShieldAlert className="w-6 h-6 text-red-500" />
-                  Step 2: If you don't recognize the login
-                </h2>
-                <p className="text-base text-muted-foreground leading-relaxed mb-6">
-                  If you are unable to identify the login activity, take these steps <strong>immediately</strong> to secure your account:
-                </p>
-
-                <div className="space-y-4 mb-8">
-                  <SecurityStep
-                    number={1}
-                    icon={Lock}
-                    title="Freeze account operations"
-                    description="Navigate to Settings > Security > Freeze Account. This will temporarily halt all withdrawals and sensitive account changes. Your funds remain safe and accessible once you unfreeze."
-                  />
-                  <SecurityStep
-                    number={2}
-                    icon={KeyRound}
-                    title="Revoke all active sessions"
-                    description="Go to Settings > Security > Active Sessions and click 'Revoke All.' This will log out every device currently connected to your account, including any unauthorized sessions."
-                  />
-                  <SecurityStep
-                    number={3}
-                    icon={Smartphone}
-                    title="Reset your password and enable 2FA"
-                    description="Change your password immediately and enable two-factor authentication (2FA) if it is not already active. We recommend using an authenticator app rather than SMS-based 2FA."
-                  />
-                </div>
-
-                <div className="callout-note mb-8">
-                  <p className="text-sm leading-relaxed">
-                    <strong>Important:</strong> Never share your recovery phrase, PIN, or 2FA codes with anyone — including anyone claiming to be from Blockstream support. Our team will never ask for these credentials.
-                  </p>
-                </div>
-
-                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">
-                  Step 3: Review your transaction history
-                </h2>
-                <p className="text-base text-muted-foreground leading-relaxed mb-4">
-                  After securing your account, check your recent transaction history in the Blockstream App or Green Wallet for any unauthorized activity:
-                </p>
-                <ul className="space-y-3 mb-8 ml-1">
-                  <ListItem>Look for any transactions you don't recognize.</ListItem>
-                  <ListItem>Check for any changes to your withdrawal addresses or whitelist settings.</ListItem>
-                  <ListItem>Review any API key activity if you use the Blockstream API.</ListItem>
-                </ul>
-
-                <h2 className="text-2xl font-bold text-foreground mt-10 mb-4">
-                  Still need help?
-                </h2>
-                <p className="text-base text-muted-foreground leading-relaxed mb-6">
-                  If you believe your account has been compromised or you notice unauthorized transactions, contact our support team immediately. You can use the chat assistant in the bottom-right corner to get instant help, or reach out through our official support channels:
-                </p>
-
-                <div className="flex flex-wrap gap-3 mb-10">
-                  <a
-                    href="https://help.blockstream.com"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
-                  >
-                    Contact Support
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                  <a
-                    href="https://help.blockstream.com/hc/en-us/categories/900000056183"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-foreground rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    View all security articles
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-
-                <div className="border-t border-gray-200 pt-6 mt-10">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Last updated: March 2026</span>
-                    <div className="flex items-center gap-1 text-emerald-600">
-                      <span className="font-medium">Emerald Verified</span>
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              </article>
-            </main>
-          </div>
-        </div>
-      </div>
-
-      <footer className="bg-[#111316] text-gray-400 text-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="15" stroke="#10B981" strokeWidth="2" />
-                <path d="M10 16.5L14.5 21L23 11" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              </svg>
-              <span className="text-gray-300 font-semibold">Blockstream</span>
-            </div>
-            <p>&copy; 2026 Blockstream Corporation Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <ChatWidget />
-    </div>
+    <>
+      <Hero />
+      <PrinciplesStrip />
+      <PersonasGrid />
+      <ClosingCTA />
+    </>
   );
 }
 
-function ListItem({ children }: { children: React.ReactNode }) {
+function Hero() {
   return (
-    <li className="flex items-start gap-3">
-      <span className="mt-2 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-      <span className="text-base text-muted-foreground leading-relaxed">{children}</span>
-    </li>
+    <section className="border-b border-border">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28">
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="chb-mono-eyebrow text-muted-foreground mb-6"
+        >
+          Greater &mdash; sovereign support bots, FOSS by default
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl"
+        >
+          Your customers deserve a chatbot that{" "}
+          <span style={{ color: "#FE299E" }}>actually knows your business</span>.
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.12 }}
+          className="text-lg sm:text-xl text-muted-foreground mt-6 max-w-2xl leading-relaxed"
+        >
+          The free shell runs entirely in the browser. Six industry templates,
+          one architectural conviction: bias is unavoidable, so make it explicit
+          and make it yours.
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="mt-10 flex flex-wrap gap-3"
+        >
+          <a
+            href="#personas"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate"
+            data-testid="link-hero-personas"
+          >
+            See the six bots
+            <ArrowRight className="w-4 h-4" />
+          </a>
+          <Link
+            href="/about"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium hover-elevate active-elevate"
+            data-testid="link-hero-about"
+          >
+            What is Greater?
+          </Link>
+        </motion.div>
+      </div>
+    </section>
   );
 }
 
-function SecurityStep({ number, icon: Icon, title, description }: { number: number; icon: any; title: string; description: string }) {
+function PrinciplesStrip() {
+  const items = [
+    {
+      icon: Cpu,
+      title: "Browser-local LLM",
+      body: "WebGPU inference. No per-message API tax. Your visitors' messages never leave their device unless they escalate.",
+    },
+    {
+      icon: FileText,
+      title: "Curated corpus",
+      body: "Deterministic scrapers, not LLM extraction. The bot only speaks from material you've reviewed and approved.",
+    },
+    {
+      icon: AlertCircle,
+      title: "Explicit bias",
+      body: "Pretending to be neutral is a worse failure than being explicit. Every persona declares its perspective.",
+    },
+    {
+      icon: Lock,
+      title: "FOSS shell",
+      body: "MIT-licensed core. Fork it, run it yourself. The custom indexing and integration is what gets hired.",
+    },
+  ];
   return (
-    <div className="flex gap-4 p-5 bg-gray-50 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
-      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
-        {number}
+    <section className="border-b border-border bg-secondary/40">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {items.map((it) => (
+            <div key={it.title} className="flex flex-col gap-2">
+              <it.icon className="w-5 h-5" style={{ color: "#01a9f4" }} />
+              <h3 className="text-sm font-semibold">{it.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{it.body}</p>
+            </div>
+          ))}
+        </div>
       </div>
-      <div>
-        <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-1.5">
-          <Icon className="w-4 h-4 text-muted-foreground" />
-          {title}
+    </section>
+  );
+}
+
+function PersonasGrid() {
+  return (
+    <section id="personas" className="py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-12">
+          <p className="chb-mono-eyebrow text-muted-foreground mb-3">
+            Six industries / six bots
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight max-w-3xl">
+            Each card is a real product surface, not a placeholder.
+          </h2>
+          <p className="text-base text-muted-foreground mt-3 max-w-2xl">
+            One demo is wired live today (FinTech &mdash; the Blockstream bot below).
+            The other five are persona-tuned holding pages while we index their
+            pilot corpora.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {personas.map((p) => (
+            <PersonaCard key={p.slug} persona={p} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PersonaCard({ persona }: { persona: Persona }) {
+  const isLive = persona.demoStatus === "live";
+  return (
+    <Link
+      href={`/personas/${persona.slug}`}
+      className="group block rounded-xl border border-card-border bg-card overflow-hidden hover-elevate active-elevate"
+      data-testid={`card-persona-${persona.slug}`}
+    >
+      <div className="aspect-[16/9] overflow-hidden bg-secondary/50 border-b border-card-border">
+        <img
+          src={`${BASE}${persona.heroImage}`}
+          alt=""
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          loading="lazy"
+        />
+      </div>
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="chb-mono-label text-muted-foreground">
+            {persona.shortName}
+          </span>
+          <span
+            className="chb-mono-label"
+            style={{ color: isLive ? "#FE299E" : "hsl(var(--muted-foreground))" }}
+          >
+            {isLive ? "Live demo" : "Coming online"}
+          </span>
+        </div>
+        <h3 className="text-lg font-semibold leading-snug mb-2">
+          {persona.tagline}
         </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+          {persona.pain}
+        </p>
+        <div className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium">
+          {isLive ? "Try the demo" : "Read the case study"}
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+        </div>
       </div>
-    </div>
+    </Link>
+  );
+}
+
+function ClosingCTA() {
+  return (
+    <section className="border-t border-border bg-secondary/40">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="max-w-2xl">
+          <p className="chb-mono-eyebrow text-muted-foreground mb-3">
+            For the curious
+          </p>
+          <h2 className="text-3xl font-semibold tracking-tight mb-4">
+            The shell is free. The thinking is for hire.
+          </h2>
+          <p className="text-base text-muted-foreground leading-relaxed">
+            Greater is open-source under MIT. Fork it, run it yourself, ship it
+            on your own domain &mdash; that's the point. The work clients hire me
+            for is the corpus curation, the integration into your stack, and the
+            architectural calls that make the bot actually close the lead.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              href="https://hire.colonhyphenbracket.pink"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate"
+              data-testid="link-cta-hire"
+            >
+              hire.colonhyphenbracket.pink
+              <ArrowRight className="w-4 h-4" />
+            </a>
+            <a
+              href="https://github.com/rorshockbtc/emerald-support-bot"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium hover-elevate active-elevate"
+              data-testid="link-cta-github"
+            >
+              View on GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

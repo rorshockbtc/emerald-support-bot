@@ -47,3 +47,13 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Greater — proprietary persona weights and pipes data are gitignored.
+# The FOSS shell ships without them; production deployments mount them locally.
+data/pipes/
+data/weights/
+artifacts/emerald/data/pipes/
+artifacts/emerald/data/weights/
+artifacts/emerald/public/weights/
+*.gguf
+*.onnx_data

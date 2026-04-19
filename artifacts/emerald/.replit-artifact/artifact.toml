@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Emerald Support"
+title = "Greater"
 version = "1.0.0"
 id = "artifacts/emerald"
 router = "path"
