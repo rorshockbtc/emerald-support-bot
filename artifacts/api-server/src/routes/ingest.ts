@@ -149,6 +149,15 @@ async function resolveSafeUrl(value: string): Promise<SafeUrl | null> {
 /*  Fetch with size + time bounds                                 */
 /* -------------------------------------------------------------- */
 
+const MAX_REDIRECTS = 5;
+
+/**
+ * Fetch with manual redirect handling so every hop in a redirect chain
+ * is re-validated through `resolveSafeUrl`. Default fetch follows
+ * 30x's transparently, which would let a public URL bounce to a
+ * private/internal address (or AWS metadata) and bypass the SSRF
+ * guard. We disable that and walk the chain ourselves.
+ */
 async function fetchText(
   url: string,
   init?: RequestInit,
@@ -156,16 +165,41 @@ async function fetchText(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
-      ...init,
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        "user-agent": USER_AGENT,
-        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        ...(init?.headers ?? {}),
-      },
-    });
+    let currentUrl = url;
+    let res: Awaited<ReturnType<typeof fetch>> | null = null;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      res = await fetch(currentUrl, {
+        ...init,
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          "user-agent": USER_AGENT,
+          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          ...(init?.headers ?? {}),
+        },
+      });
+      // 3xx with Location → re-validate and continue.
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) break;
+        if (hop === MAX_REDIRECTS) {
+          throw new Error("Too many redirects");
+        }
+        const next = new URL(location, currentUrl).toString();
+        const safeNext = await resolveSafeUrl(next);
+        if (!safeNext) {
+          throw new Error(
+            "Refusing to follow redirect to a private or unsafe address",
+          );
+        }
+        currentUrl = safeNext.url.toString();
+        // Drain and discard body before the next hop.
+        await res.body?.cancel();
+        continue;
+      }
+      break;
+    }
+    if (!res) throw new Error("No response");
     if (!res.ok) {
       throw new Error(`Upstream responded ${res.status}`);
     }
@@ -173,7 +207,7 @@ async function fetchText(
     if (!reader) {
       const text = await res.text();
       if (text.length > MAX_BYTES) throw new Error("Response exceeded max size");
-      return { text, finalUrl: res.url || url };
+      return { text, finalUrl: currentUrl };
     }
     let total = 0;
     const decoder = new TextDecoder();
@@ -189,7 +223,7 @@ async function fetchText(
       text += decoder.decode(value, { stream: true });
     }
     text += decoder.decode();
-    return { text, finalUrl: res.url || url };
+    return { text, finalUrl: currentUrl };
   } finally {
     clearTimeout(timer);
   }

@@ -158,6 +158,17 @@ export async function countDocuments(): Promise<number> {
 }
 
 /**
+ * Count documents belonging to a specific ingestion job. Used by the
+ * seed-corpus bootstrap to decide whether the seed slice is intact
+ * without depending on the total IndexedDB row count (which is
+ * inflated by user-ingested sources and the optional Bitcoin bundle).
+ */
+export async function countDocumentsByJob(jobId: string): Promise<number> {
+  const db = await getDb();
+  return db.countFromIndex("documents", "by_job_id", jobId);
+}
+
+/**
  * Delete every chunk + embedding belonging to the given ingestion job.
  * Used by the Knowledge panel's "Remove" button. One job may span
  * many page URLs (sitemap walk, RSS ingest), so this removes them all

@@ -34,7 +34,8 @@ import {
 import { SEED_CORPUS } from "./seedCorpus";
 import {
   clearAll,
-  countDocuments,
+  countDocumentsByJob,
+  deleteByJob,
   getCorpusMeta,
   getMetaFlag,
   putChunkWithVector,
@@ -161,17 +162,21 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
 
   const ensureSeedCorpus = useCallback(async (): Promise<void> => {
     const meta = await getCorpusMeta();
-    const count = await countDocuments();
+    // Count only the seed-job slice — *not* total documents — so that
+    // user-ingested sources and the Bitcoin bundle don't trigger a
+    // bogus "cache changed" wipe of everything on every reload.
+    const seedCount = await countDocumentsByJob(SEED_JOB_ID);
     if (
       meta &&
       meta.version === SEED_CORPUS_VERSION &&
       meta.embedderName === EMBEDDER_MODEL_ID &&
-      count === SEED_CORPUS.length
+      seedCount === SEED_CORPUS.length
     ) {
       return;
     }
-    // Re-embed everything (cache schema changed or first run).
-    await clearAll();
+    // Seed slice is missing or stale. Replace just the seed job;
+    // leave user-ingested jobs and the Bitcoin bundle untouched.
+    await deleteByJob(SEED_JOB_ID);
     const indexedAt = Date.now();
     for (const chunk of SEED_CORPUS) {
       const vec = await callWorker<number[]>("embed", { text: chunk.text });
