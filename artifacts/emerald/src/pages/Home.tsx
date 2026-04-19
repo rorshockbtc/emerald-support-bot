@@ -43,11 +43,11 @@ function Hero() {
             backgroundRepeat: "no-repeat",
             backgroundPosition: "right center",
             backgroundSize: "min(900px, 90%) auto",
-            opacity: 0.18,
+            opacity: 0.42,
             WebkitMaskImage:
-              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 35%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,1) 100%)",
+              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,1) 100%)",
             maskImage:
-              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 35%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,1) 100%)",
+              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,1) 100%)",
           }}
         />
         {/* A second, very-soft top-down fade so the hero copy area

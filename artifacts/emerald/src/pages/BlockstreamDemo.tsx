@@ -50,7 +50,7 @@ export default function Home() {
     // The Bitcoin Greater Pipe is keyed to persona='fintech'; if no
     // manifest is mounted under data/pipes/, the provider yields
     // pipe=null and the chat widget runs in Generic mode visibly.
-    <PipeProvider persona="fintech">
+    <PipeProvider persona="fintech" personaDefaults={fintech?.defaultBias}>
     <div className="min-h-screen bg-white text-foreground flex flex-col">
       <SkipToContent />
       <nav className="bg-[#111316] text-white sticky top-0 z-40">

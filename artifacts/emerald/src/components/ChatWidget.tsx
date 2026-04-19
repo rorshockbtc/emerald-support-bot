@@ -129,9 +129,7 @@ export function ChatWidget({
   const escalateMutation = useEscalateTicket();
   const llm = useLLM();
   const pipe = usePipe();
-  const activeBiasOption = pipe.pipe?.bias_options.find(
-    (b) => b.id === pipe.activeBiasId,
-  );
+  const activeBiasOption = pipe.effectiveBiasOption;
 
   // When the user switches bias mid-conversation, drop a small inline
   // note so the *visible transcript* explains why the next answer may
@@ -139,9 +137,8 @@ export function ChatWidget({
   // history (as a system message) so the model knows its perspective
   // changed and is allowed to disagree with prior turns.
   const handleBiasChange = (nextBiasId: string) => {
-    if (!pipe.pipe) return;
     if (nextBiasId === pipe.activeBiasId) return;
-    const next = pipe.pipe.bias_options.find((b) => b.id === nextBiasId);
+    const next = pipe.effectiveBiasOptions.find((b) => b.id === nextBiasId);
     const prev = activeBiasOption;
     if (!next) return;
     pipe.setActiveBias(nextBiasId);
@@ -206,7 +203,7 @@ export function ChatWidget({
       routeSlug,
       personaSlug,
       personaBrand,
-      biasId: pipe.pipe ? pipe.activeBiasId : undefined,
+      biasId: activeBiasOption ? pipe.activeBiasId : undefined,
       biasLabel: activeBiasOption?.label,
       turns,
     });
@@ -216,9 +213,8 @@ export function ChatWidget({
     personaSlug,
     personaBrand,
     sessionId,
-    pipe.pipe,
     pipe.activeBiasId,
-    activeBiasOption?.label,
+    activeBiasOption,
   ]);
 
   useEffect(() => {
@@ -289,23 +285,33 @@ export function ChatWidget({
           role: m.role === 'bot' ? 'assistant' : 'user',
           content: m.content,
         }));
-      const askOptions: AskOptions | undefined = pipe.pipe
-        ? {
-            systemPrompt:
-              pipe.pipe.system_prompts[pipe.activeBiasId] ?? undefined,
-            // Always include 'neutral' so common-ground material remains
-            // eligible regardless of fork. The active bias adds the
-            // perspective-specific material on top.
-            biasFilter: Array.from(
-              new Set<Bias>([
-                'neutral',
-                pipe.activeBiasId as Bias,
-              ]),
-            ),
-            biasId: pipe.activeBiasId,
-            biasLabel: activeBiasOption?.label,
-          }
-        : undefined;
+      // Build ask options from whichever bias source is active for this
+      // session — Pipe (curated, includes biasFilter for retrieval)
+      // wins; persona-default audience bias still ships a system-prompt
+      // hint and the bias label so the response shifts visibly.
+      let askOptions: AskOptions | undefined;
+      if (pipe.pipe) {
+        askOptions = {
+          systemPrompt: pipe.effectivePromptHint,
+          // Always include 'neutral' so common-ground material remains
+          // eligible regardless of fork. The active bias adds the
+          // perspective-specific material on top.
+          biasFilter: Array.from(
+            new Set<Bias>([
+              'neutral',
+              pipe.activeBiasId as Bias,
+            ]),
+          ),
+          biasId: pipe.activeBiasId,
+          biasLabel: activeBiasOption?.label,
+        };
+      } else if (pipe.effectivePromptHint) {
+        askOptions = {
+          systemPrompt: pipe.effectivePromptHint,
+          biasId: pipe.activeBiasId,
+          biasLabel: activeBiasOption?.label,
+        };
+      }
       const answer = await llm.ask(history, userText, askOptions);
       const isOpenClaw = answer.source === 'openclaw';
       const botMsg: MessageProps = {
@@ -320,7 +326,7 @@ export function ChatWidget({
         responseSource: isOpenClaw ? 'openclaw' : 'local',
         thoughtTrace: answer.thoughtTrace,
         biasLabel: activeBiasOption?.label,
-        biasId: pipe.pipe ? pipe.activeBiasId : undefined,
+        biasId: activeBiasOption ? pipe.activeBiasId : undefined,
         localOnly: localOnlyDueToCap,
       };
       setMessages((prev) => [...prev, botMsg]);
@@ -757,13 +763,13 @@ export function ChatWidget({
             </div>
 
             <div className="px-4 py-3 border-t border-[hsl(var(--widget-border))] bg-[hsl(220,13%,8%)]">
-              {pipe.pipe && pipe.pipe.bias_options.length > 1 && (
+              {pipe.effectiveBiasOptions.length > 1 && (
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--widget-muted))]">
-                    Perspective
+                    {pipe.biasSource === 'pipe' ? 'Perspective' : 'Audience'}
                   </span>
                   <BiasToggle
-                    options={pipe.pipe.bias_options}
+                    options={pipe.effectiveBiasOptions}
                     activeId={pipe.activeBiasId}
                     onChange={handleBiasChange}
                     disabled={isPending}

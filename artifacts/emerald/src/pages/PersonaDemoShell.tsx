@@ -50,7 +50,10 @@ function PersonaDemoShellInner({ persona }: { persona: Persona }) {
   }, [llm, scenario.seedSlug]);
 
   return (
-    <PipeProvider persona={persona.slug as PipePersona}>
+    <PipeProvider
+      persona={persona.slug as PipePersona}
+      personaDefaults={persona.defaultBias}
+    >
       <div className="min-h-screen bg-white text-foreground flex flex-col">
         <SkipToContent />
         <MockNav persona={persona} />

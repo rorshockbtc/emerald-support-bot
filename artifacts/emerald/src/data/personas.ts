@@ -28,6 +28,26 @@ export type Persona = {
    * other persona must define this.
    */
   scenario?: PersonaScenario;
+  /**
+   * Generalised "audience" bias every persona's demo ships with, even
+   * when no curated Pipe is mounted. The Greater thesis is that bias
+   * is unavoidable, so we make it explicit and toggleable in every
+   * shell — not just the FinTech one. When a Pipe is mounted with its
+   * own (more specific) `bias_options`, the Pipe wins and these
+   * defaults are not shown.
+   *
+   * `promptHints[id]` is appended to the system prompt for that
+   * audience so the bot's tone and emphasis actually shifts in
+   * response to the toggle, even on the FOSS-shell happy path that
+   * has no curated corpus to retrieve from.
+   */
+  defaultBias?: PersonaDefaultBias;
+};
+
+export type PersonaDefaultBias = {
+  options: { id: string; label: string; description: string }[];
+  defaultId: string;
+  promptHints: Record<string, string>;
 };
 
 export type PersonaScenario = {
@@ -82,6 +102,17 @@ const PERSONAS: Persona[] = [
     slug: 'startups',
     name: 'Startups',
     shortName: 'Startups',
+    defaultBias: {
+      defaultId: 'customer',
+      options: [
+        { id: 'customer', label: 'Customer view', description: 'Answer from the prospective buyer\'s perspective — pricing, fit, friction.' },
+        { id: 'business', label: 'Founder view', description: 'Answer from the founder\'s perspective — retention, cost-to-serve, contract terms.' },
+      ],
+      promptHints: {
+        customer: 'You are answering as if the visitor is a prospective customer evaluating the product. Lead with concrete pricing, fit, and friction details. Quote the docs verbatim. If the policy is unfavourable to the visitor, name it plainly.',
+        business: 'You are answering as if the visitor is the company\'s founder or operator. Lead with implications for retention, cost-to-serve, contract leverage, and which docs need to change to remove visitor friction.',
+      },
+    },
     tagline: 'Stop bleeding qualified leads to a 2023-grade chatbot.',
     pain: 'Customer acquisition costs are high, attention windows are short, and a generic chatbot can lose a $400-CAC visitor in 8 seconds.',
     heroImage: 'images/personas/startups.png',
@@ -161,6 +192,17 @@ Founders who've already realized the chatbot in their corner is costing them dea
     slug: 'faith',
     name: 'Faith-Based Organizations',
     shortName: 'Faith',
+    defaultBias: {
+      defaultId: 'member',
+      options: [
+        { id: 'member', label: 'Visitor / member', description: 'Answer for someone discerning whether to attend or join.' },
+        { id: 'staff', label: 'Pastoral staff', description: 'Answer for the church\'s pastoral and admin staff — internal-process and doctrine-research lens.' },
+      ],
+      promptHints: {
+        member: 'You are answering a curious visitor or current member. Be pastoral, plain, and concrete. Cite sermons or position papers when relevant. If the question is about a sensitive topic (death, doctrine, suffering), prioritise warmth over completeness.',
+        staff: 'You are answering pastoral or administrative staff. Be precise about doctrinal nuance, prior teaching from this congregation, and where the relevant primary sources sit. Surface internal-process detail (membership, discipline, polity) the public-facing answer would not.',
+      },
+    },
     tagline: 'A bot that actually knows your church, your sermons, your doctrine.',
     pain: 'Years of YouTube and Rumble sermons, distinctive doctrine, and almost no way for a curious visitor to find a five-minute answer.',
     heroImage: 'images/personas/faith.png',
@@ -240,6 +282,17 @@ Churches and faith-based organizations whose distinctive teaching is locked insi
     slug: 'schools',
     name: 'Private Schools & Families',
     shortName: 'Schools & Families',
+    defaultBias: {
+      defaultId: 'parent',
+      options: [
+        { id: 'parent', label: 'Parent / admin', description: 'Answer for parents and school staff — policy, schedule, enrollment.' },
+        { id: 'student', label: 'Student', description: 'Answer for the student themselves — age-appropriate, plain language.' },
+      ],
+      promptHints: {
+        parent: 'You are answering a parent or school administrator. Lead with policy specifics, dates, costs, and the next concrete action they need to take. Cite handbooks verbatim. Surface anything a guardian needs to know to make an informed decision.',
+        student: 'You are answering a student directly. Use plain, age-appropriate language and a warm tone. If the question touches on something a guardian should be involved in (medical, disciplinary, financial), say so and route them to the right adult.',
+      },
+    },
     tagline: 'Curated knowledge for institutions and families that care about what their kids learn.',
     pain: 'Private schools want granular control over the curriculum a chatbot speaks from. Families want certainty that the AI in the room will not drift into territory that violates their values.',
     heroImage: 'images/personas/schools.png',
@@ -321,6 +374,17 @@ Heads of school, deans of academic affairs, and curriculum directors who are wat
     slug: 'small-business',
     name: 'Small Businesses',
     shortName: 'Small Business',
+    defaultBias: {
+      defaultId: 'customer',
+      options: [
+        { id: 'customer', label: 'Customer view', description: 'Answer from the walk-in customer\'s perspective.' },
+        { id: 'business', label: 'Owner view', description: 'Answer from the owner\'s perspective — margins, bookings, what to change.' },
+      ],
+      promptHints: {
+        customer: 'You are answering a walk-in or prospective customer. Lead with hours, pricing, location, and what they can book or buy right now. Be plain and friendly. Cite the menu/services page where relevant.',
+        business: 'You are answering the small-business owner. Lead with margin implications, booking conversion, where the visitor likely got stuck on the public site, and which copy needs to change to lift conversions.',
+      },
+    },
     tagline: 'The chatbot a $50k-revenue local business could never afford until now.',
     pain: 'Generic mass-market chatbots are tuned for nothing; private AI is priced for the Fortune 500. There is no middle.',
     heroImage: 'images/personas/small-business.png',
@@ -400,6 +464,19 @@ Owner-operators who are competent enough to know their site's chat experience is
     slug: 'healthtech',
     name: 'HealthTech',
     shortName: 'HealthTech',
+    defaultBias: {
+      defaultId: 'patient',
+      options: [
+        { id: 'patient', label: 'Patient view', description: 'Answer for patients and caregivers — plain, careful, never diagnostic.' },
+        { id: 'company', label: 'Company / staff', description: 'Answer for company operators — workflow, billing, escalation.' },
+        { id: 'investor', label: 'Investor view', description: 'Answer for investors and partners — traction, regulatory posture, model.' },
+      ],
+      promptHints: {
+        patient: 'You are answering a patient or caregiver. Use plain, non-clinical language. Never diagnose or prescribe. When the question is medical, say "this isn\'t medical advice — please contact a clinician" and surface the actual escalation path. Be calm and concrete about logistics (appointments, billing, portal access).',
+        company: 'You are answering company staff (CSR, ops, clinical operations). Be precise about internal workflow, escalation rules, billing-code questions, and where the relevant SOP lives. Surface compliance considerations the patient-facing answer would not.',
+        investor: 'You are answering an investor or commercial partner. Lead with traction, regulatory posture (HIPAA / state-specific), business model, and how this product compares to incumbent vendors. Be sober about claims.',
+      },
+    },
     tagline: 'A support bot that respects HIPAA, says what it knows, and shuts up about what it does not.',
     pain: 'Generic AI chat in a healthcare context is a compliance liability. Vendor-locked AI chat is a per-seat tax on a margin-thin business.',
     heroImage: 'images/personas/healthtech.png',
@@ -477,6 +554,19 @@ Healthtech founders and product leads who are watching the AI wave from outside 
     slug: 'fintech',
     name: 'FinTech & Bitcoin',
     shortName: 'FinTech',
+    defaultBias: {
+      defaultId: 'customer',
+      options: [
+        { id: 'customer', label: 'Customer view', description: 'Answer from the end-user / wallet holder\'s perspective.' },
+        { id: 'company', label: 'Company / staff', description: 'Answer from the company\'s perspective — internal process, escalation, compliance.' },
+        { id: 'general', label: 'General inquiry', description: 'Answer for a generic outside inquiry — press, partner, curious passerby.' },
+      ],
+      promptHints: {
+        customer: 'You are answering an end-user or wallet holder. Lead with the concrete next step they should take. Be calm under panic; if the question describes a security incident (lost seed, suspected phishing, unauthorised login) surface the documented incident playbook with verbatim instructions and the right contact path. Never ask for a seed phrase.',
+        company: 'You are answering company staff. Be precise about the internal process, escalation rules, compliance constraints (KYC/AML), and where the customer-facing answer would understate the operational picture. Cite SOPs and runbooks where relevant.',
+        general: 'You are answering an outside inquiry — could be press, a partner, or a curious technologist. Be sober and high-level. Avoid specifics about individual customers or internal infrastructure. Route real partnership or media questions to the documented contact path.',
+      },
+    },
     tagline: 'Sovereign support for an industry that takes "do not trust, verify" seriously.',
     pain: 'Bitcoin and fintech users are paranoid about where their queries go, for good reason. Most chat AI sends every keystroke to a third party.',
     heroImage: 'images/personas/fintech.png',
