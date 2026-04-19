@@ -639,6 +639,7 @@ router.post("/ingest/crawl", async (req: Request, res: Response): Promise<void> 
       error: "Daily crawl page-count cap exceeded for this IP.",
       cap: DAILY_PAGE_CAP,
       used: usageBefore.used,
+      remaining: 0,
       resetsInMs: usageBefore.resetsInMs,
     });
     return;
