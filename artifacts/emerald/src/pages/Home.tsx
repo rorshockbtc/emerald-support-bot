@@ -2,9 +2,9 @@ import React from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, Lock, Cpu, FileText, AlertCircle } from "lucide-react";
-import { personas, type Persona } from "@/data/personas";
-
-const BASE = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL;
+import { personas } from "@/data/personas";
+import { PersonaCard } from "@/components/PersonaCard";
+import { ContactCTASection } from "@/components/ContactCTASection";
 
 export default function Home() {
   return (
@@ -12,7 +12,7 @@ export default function Home() {
       <Hero />
       <PrinciplesStrip />
       <PersonasGrid />
-      <ClosingCTA />
+      <ContactCTASection tone="muted" />
     </>
   );
 }
@@ -56,7 +56,7 @@ function Hero() {
         >
           <a
             href="#personas"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate active:scale-[0.97]"
             data-testid="link-hero-personas"
           >
             See the six bots
@@ -64,7 +64,7 @@ function Hero() {
           </a>
           <Link
             href="/about"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium hover-elevate active-elevate"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium hover-elevate active-elevate active:scale-[0.97]"
             data-testid="link-hero-about"
           >
             What is Greater?
@@ -79,28 +79,36 @@ function PrinciplesStrip() {
   const items = [
     {
       icon: Cpu,
-      title: "Browser-local LLM",
-      body: "WebGPU inference. No per-message API tax. Your visitors' messages never leave their device unless they escalate.",
+      title: "FOSS shell",
+      body: "MIT-licensed core. Fork it, run it yourself, ship it on your domain. The shell is free.",
     },
     {
       icon: FileText,
-      title: "Curated corpus",
-      body: "Deterministic scrapers, not LLM extraction. The bot only speaks from material you've reviewed and approved.",
+      title: "In-browser inference",
+      body: "WebGPU runs the model on the visitor's device. No per-message API tax. No vendor between you and your customers.",
     },
     {
       icon: AlertCircle,
-      title: "Explicit bias",
-      body: "Pretending to be neutral is a worse failure than being explicit. Every persona declares its perspective.",
+      title: "Pipe-powered customization",
+      body: "The corpus, the persona-tuned weights, and the integration into your stack are where deployments actually win — and that customization is hard. Hire me.",
     },
     {
       icon: Lock,
-      title: "FOSS shell",
-      body: "MIT-licensed core. Fork it, run it yourself. The custom indexing and integration is what gets hired.",
+      title: "Explicit bias",
+      body: "Pretending to be neutral is a worse failure than being explicit. Every persona declares its perspective up front.",
     },
   ];
   return (
     <section className="border-b border-border bg-secondary/40">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <div className="mb-8">
+          <p className="chb-mono-eyebrow text-muted-foreground mb-2">
+            How it works
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
+            FOSS shell, in-browser inference, hired-out customization.
+          </h2>
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {items.map((it) => (
             <div key={it.title} className="flex flex-col gap-2">
@@ -127,7 +135,7 @@ function PersonasGrid() {
             Each card is a real product surface, not a placeholder.
           </h2>
           <p className="text-base text-muted-foreground mt-3 max-w-2xl">
-            One demo is wired live today (FinTech &mdash; the Blockstream bot below).
+            One demo is wired live today (FinTech &mdash; the Blockstream bot).
             The other five are persona-tuned holding pages while we index their
             pilot corpora.
           </p>
@@ -137,93 +145,6 @@ function PersonasGrid() {
           {personas.map((p) => (
             <PersonaCard key={p.slug} persona={p} />
           ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PersonaCard({ persona }: { persona: Persona }) {
-  const isLive = persona.demoStatus === "live";
-  return (
-    <Link
-      href={`/personas/${persona.slug}`}
-      className="group block rounded-xl border border-card-border bg-card overflow-hidden hover-elevate active-elevate"
-      data-testid={`card-persona-${persona.slug}`}
-    >
-      <div className="aspect-[16/9] overflow-hidden bg-secondary/50 border-b border-card-border">
-        <img
-          src={`${BASE}${persona.heroImage}`}
-          alt=""
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-          loading="lazy"
-        />
-      </div>
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="chb-mono-label text-muted-foreground">
-            {persona.shortName}
-          </span>
-          <span
-            className="chb-mono-label"
-            style={{ color: isLive ? "#FE299E" : "hsl(var(--muted-foreground))" }}
-          >
-            {isLive ? "Live demo" : "Coming online"}
-          </span>
-        </div>
-        <h3 className="text-lg font-semibold leading-snug mb-2">
-          {persona.tagline}
-        </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-          {persona.pain}
-        </p>
-        <div className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium">
-          {isLive ? "Try the demo" : "Read the case study"}
-          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function ClosingCTA() {
-  return (
-    <section className="border-t border-border bg-secondary/40">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="max-w-2xl">
-          <p className="chb-mono-eyebrow text-muted-foreground mb-3">
-            For the curious
-          </p>
-          <h2 className="text-3xl font-semibold tracking-tight mb-4">
-            The shell is free. The thinking is for hire.
-          </h2>
-          <p className="text-base text-muted-foreground leading-relaxed">
-            Greater is open-source under MIT. Fork it, run it yourself, ship it
-            on your own domain &mdash; that's the point. The work clients hire me
-            for is the corpus curation, the integration into your stack, and the
-            architectural calls that make the bot actually close the lead.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href="https://hire.colonhyphenbracket.pink"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate"
-              data-testid="link-cta-hire"
-            >
-              hire.colonhyphenbracket.pink
-              <ArrowRight className="w-4 h-4" />
-            </a>
-            <a
-              href="https://github.com/rorshockbtc/emerald-support-bot"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium hover-elevate active-elevate"
-              data-testid="link-cta-github"
-            >
-              View on GitHub
-            </a>
-          </div>
         </div>
       </div>
     </section>

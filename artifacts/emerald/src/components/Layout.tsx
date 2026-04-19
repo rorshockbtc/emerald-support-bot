@@ -1,35 +1,42 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Home as HomeIcon, Layers, Info, MessageSquare } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ContactFormModal } from "@/components/ContactFormModal";
+import { useContact } from "@/components/ContactContext";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/openclaw", label: "OpenClaw" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [contactOpen, setContactOpen] = useState(false);
   const [location] = useLocation();
+  const { open: openContact } = useContact();
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <Header
-        location={location}
-        mobileOpen={mobileOpen}
-        setMobileOpen={setMobileOpen}
-        onContact={() => setContactOpen(true)}
-      />
+      <Header location={location} onContact={openContact} />
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-20 md:pb-0">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
+      </main>
 
-      <Footer onContact={() => setContactOpen(true)} />
+      <Footer onContact={openContact} />
 
-      <ContactFormModal open={contactOpen} onOpenChange={setContactOpen} />
+      <BottomNav location={location} onContact={openContact} />
     </div>
   );
 }
@@ -55,17 +62,13 @@ function Wordmark({ className }: { className?: string }) {
 
 function Header({
   location,
-  mobileOpen,
-  setMobileOpen,
   onContact,
 }: {
   location: string;
-  mobileOpen: boolean;
-  setMobileOpen: (v: boolean) => void;
   onContact: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border">
+    <header className="sticky top-0 z-40 backdrop-blur bg-background/75 border-b border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <Wordmark />
@@ -91,50 +94,73 @@ function Header({
             <Button
               size="sm"
               onClick={onContact}
-              className="rounded-full"
+              className="rounded-full active:scale-[0.97]"
               data-testid="button-nav-contact"
             >
               Contact
             </Button>
           </nav>
-
-          <button
-            type="button"
-            className="md:hidden h-9 w-9 inline-flex items-center justify-center rounded-md hover-elevate"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            data-testid="button-mobile-menu"
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
-
-        {mobileOpen && (
-          <div className="md:hidden border-t border-border py-3 space-y-1">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className="block px-2 py-2 chb-mono-label text-muted-foreground hover:text-foreground hover-elevate rounded-md"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setMobileOpen(false);
-                onContact();
-              }}
-              className="block w-full text-left px-2 py-2 chb-mono-label text-muted-foreground hover:text-foreground hover-elevate rounded-md"
-            >
-              Contact
-            </button>
-          </div>
-        )}
       </div>
     </header>
+  );
+}
+
+function BottomNav({
+  location,
+  onContact,
+}: {
+  location: string;
+  onContact: () => void;
+}) {
+  const items: { href: string; label: string; icon: typeof HomeIcon }[] = [
+    { href: "/", label: "Home", icon: HomeIcon },
+    { href: "/#personas", label: "Bots", icon: Layers },
+    { href: "/about", label: "About", icon: Info },
+  ];
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/90 backdrop-blur border-t border-border"
+      aria-label="Mobile navigation"
+    >
+      <div className="flex items-stretch justify-around h-14">
+        {items.map((it) => {
+          const active =
+            it.href === "/"
+              ? location === "/"
+              : it.href.startsWith("/#")
+                ? false
+                : location.startsWith(it.href);
+          return (
+            <Link
+              key={it.label}
+              href={it.href}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-0.5 hover-elevate active-elevate",
+                active ? "text-foreground" : "text-muted-foreground",
+              )}
+              data-testid={`link-bottomnav-${it.label.toLowerCase()}`}
+            >
+              <it.icon className="w-5 h-5" />
+              <span className="chb-mono-label text-[10px] tracking-[0.18em]">
+                {it.label}
+              </span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={onContact}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover-elevate active-elevate"
+          data-testid="button-bottomnav-contact"
+        >
+          <MessageSquare className="w-5 h-5" style={{ color: "#FE299E" }} />
+          <span className="chb-mono-label text-[10px] tracking-[0.18em]">
+            Contact
+          </span>
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -211,7 +237,7 @@ function Footer({ onContact }: { onContact: () => void }) {
         </div>
 
         <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row justify-between gap-3 text-xs text-muted-foreground">
-          <p>&copy; 2026 colonhyphenbracket. FOSS — released under MIT.</p>
+          <p>&copy; 2026 colonhyphenbracket. FOSS &mdash; released under MIT.</p>
           <p className="font-mono">
             Browser-local LLM. No telemetry. No vendor lock-in.
           </p>

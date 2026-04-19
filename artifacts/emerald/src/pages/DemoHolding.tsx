@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import { ArrowLeft, Bell } from "lucide-react";
 import { getPersona } from "@/data/personas";
+import { useContact } from "@/components/ContactContext";
+import { ContactCTASection } from "@/components/ContactCTASection";
 import NotFound from "@/pages/not-found";
-import { ContactFormModal } from "@/components/ContactFormModal";
 
 export default function DemoHolding() {
   const [, params] = useRoute("/demo/:slug");
   const [, setLocation] = useLocation();
   const persona = params ? getPersona(params.slug) : undefined;
-  const [contactOpen, setContactOpen] = useState(false);
+  const { open: openContact } = useContact();
 
   // Personas whose demo is live get routed to their dedicated demo route
-  // instead of the "coming online" holding screen. Today that's only
-  // FinTech → /demo/blockstream; future live personas should be added
-  // to this map as they ship.
+  // instead of the holding screen. Today that's only FinTech →
+  // /demo/blockstream; future live personas should be added here.
   const liveDemoRoutes: Record<string, string> = {
     fintech: "/demo/blockstream",
   };
@@ -31,7 +31,7 @@ export default function DemoHolding() {
     <>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
         <Link
-          href={`/personas/${persona.slug}`}
+          href={`/bots/${persona.slug}`}
           className="chb-mono-label text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 mb-10"
           data-testid="link-back-persona"
         >
@@ -43,7 +43,7 @@ export default function DemoHolding() {
           {persona.name} demo &mdash; coming online
         </p>
         <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.1]">
-          We're indexing the corpus for this one.
+          The {persona.name.toLowerCase()} bot is being indexed &mdash; be the first client.
         </h1>
         <p className="text-base sm:text-lg text-muted-foreground mt-5 leading-relaxed">
           {persona.demoLabel}. The architecture is identical to the live{" "}
@@ -67,7 +67,7 @@ export default function DemoHolding() {
             </div>
             <div>
               <h3 className="text-base font-semibold mb-1.5">
-                Want to be a pilot?
+                Want to be the pilot?
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                 Pilot deployments get the full architecture &mdash; corpus
@@ -78,8 +78,8 @@ export default function DemoHolding() {
               </p>
               <button
                 type="button"
-                onClick={() => setContactOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate"
+                onClick={openContact}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate active:scale-[0.97]"
                 data-testid="button-pilot-contact"
               >
                 Pilot contact form
@@ -95,7 +95,7 @@ export default function DemoHolding() {
           <ul className="space-y-2 text-base">
             <li>
               <Link
-                href={`/personas/${persona.slug}`}
+                href={`/bots/${persona.slug}`}
                 className="text-foreground hover:underline underline-offset-4"
               >
                 Read the {persona.name.toLowerCase()} case study &rarr;
@@ -121,7 +121,7 @@ export default function DemoHolding() {
         </div>
       </div>
 
-      <ContactFormModal open={contactOpen} onOpenChange={setContactOpen} />
+      <ContactCTASection tone="muted" />
     </>
   );
 }

@@ -1,6 +1,8 @@
 import React from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { ShieldAlert, Lock, KeyRound, Smartphone, AlertTriangle, ChevronRight, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { ChatWidget } from '@/components/ChatWidget';
+import { ContactCTASection } from '@/components/ContactCTASection';
 
 const sidebarLinks = [
   { label: "Unauthorized login activity", active: true },
@@ -207,10 +209,15 @@ export default function Home() {
               </svg>
               <span className="text-gray-300 font-semibold">Blockstream</span>
             </div>
-            <p>&copy; 2026 Blockstream Corporation Inc. All rights reserved.</p>
+            <p>&copy; 2026 Blockstream Corporation Inc. — demo content for Greater portfolio purposes.</p>
           </div>
         </div>
       </footer>
+
+      {/* Greater contact CTA — required on every page including the
+          Blockstream demo route. Lives outside the Blockstream-branded
+          chrome and uses Greater's CHB design tokens. */}
+      <ContactCTASection />
 
       <ChatWidget />
     </div>
@@ -226,7 +233,7 @@ function ListItem({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SecurityStep({ number, icon: Icon, title, description }: { number: number; icon: any; title: string; description: string }) {
+function SecurityStep({ number, icon: Icon, title, description }: { number: number; icon: LucideIcon; title: string; description: string }) {
   return (
     <div className="flex gap-4 p-5 bg-gray-50 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
       <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
