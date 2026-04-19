@@ -8,9 +8,11 @@ import { ContactCTASection } from "@/components/ContactCTASection";
  * The shipped product today is the BYO-LLM toggle in the chat
  * widget — any visitor can point Greater at their own
  * OpenAI-compatible endpoint and stop Greater's cloud calls cold.
- * The 1-2 week and 6-10 week tiers describe what we'd build next
- * with sponsorship: a hash-signed corpus catalog and a curator
- * incentive layer.
+ * The 1–2 week and 6–10 week tiers describe what we'd build next
+ * with sponsorship: a signed peer-to-peer handshake demo over
+ * WebRTC, then a production-grade P2P inference mesh with
+ * sandboxing, per-peer rate limiting, and optional Lightning
+ * micro-settlement.
  */
 export default function OpenClaw() {
   return (
