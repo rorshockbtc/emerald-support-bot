@@ -1,0 +1,137 @@
+{
+  "_comment": "Hand-curated baseline knowledge for the Greater meta-bot. Committed to the repo so forks work out of the box and so every suggested-prompt question has at least one good answer to retrieve. The optional `greater-private.json` overlay (gitignored) layers operator-only notes on top. The build-greater-seed script is for augmenting this with scraped pages, but the baseline below is the source of truth.",
+  "version": "v2",
+  "generated_at": "2026-04-20",
+  "documents": [
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/how-it-works",
+      "source_label": "Greater — How it works in plain English",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Greater is a free, open-source platform for support chatbots that run inside the visitor's browser. The shell is MIT-licensed. When you open a Greater-powered chat, your browser downloads a small language model and an embedding model the first time, caches them, and then every question you type is answered locally on your device. There is no per-message API call to a vendor and no chat-content telemetry sent to a server. The site you're talking to ships a knowledge bundle (a small JSON file of curated text snippets) for the chatbot to retrieve from; the model reads the most relevant snippets and writes a grounded answer with inline citations like [1] [2]."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Architecturally, Greater has three layers. First, the FOSS shell: the chat UI, the WebGPU model loader, the retrieval engine, and the persona scaffolding. That's the public repository. Second, persona templates: six industry-shaped starting points (FinTech, Faith, Schools, Small Business, HealthTech, Startups) with hand-written knowledge bundles and tone prompts you can fork and adapt. Third, Pipes: a separate, proprietary extension layer that sits on top of the shell to add curated knowledge bundles, persona-tuned weights, and operator integrations. The shell works without Pipes — Pipes is what fractional engagements deliver on top."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/how-it-works#privacy",
+      "source_label": "Greater — Where your chat data goes (and doesn't)",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "By default, your chat content stays on your device. Greater runs the language model in WebGPU, in your browser. The text you type, the retrieved snippets, and the model's answer all live inside your tab — not on a server. There is no per-message round trip to OpenAI, Anthropic, or anyone else, and there is no signup wall in front of the demo. The 'LOCAL · PRIVATE' badge in the chat header is a literal claim about that round trip: while it's green, your messages are not leaving the browser."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Two things DO leave the browser, and the shell is honest about both. (a) The first time you open a Greater chat, your browser downloads the language model and embedding model from a public CDN — that's a normal HTTPS file fetch, not message content, and the file is then cached. (b) If you choose to escalate to a human via the contact form, your name, email, and message body are POSTed to a Web3Forms endpoint so the operator can email you back. That escalation is opt-in and it's the only path that ever sends your message to a server."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/openclaw",
+      "source_label": "OpenClaw — bring your own local LLM",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "OpenClaw is the bring-your-own-LLM mode. Out of the box, Greater downloads a small open-weights model into your browser via WebGPU. If you'd rather route the chat through a local model you're already running on your own machine — Ollama, LM Studio, llama.cpp's server, anything OpenAI-API-compatible — you can switch the chat into OpenClaw mode and point it at that endpoint. The shell stops downloading the in-browser model and instead sends each prompt to your local server, then renders the streamed response in the same chat UI. Your messages still don't leave your local network, because the endpoint you point at is yours."
+        },
+        {
+          "chunk_index": 1,
+          "text": "OpenClaw exists because the in-browser default has real tradeoffs: small models, slow first load, and limited reasoning. Operators or visitors who already have a 7B-or-bigger local model running can get dramatically better answers by routing through it, without giving up the privacy story — the data still doesn't leave the LAN. OpenClaw is opt-in per session and configured in the chat's settings panel. The FOSS shell ships with the OpenClaw client; no proprietary code is required."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/#personas",
+      "source_label": "Greater — The six bots that ship out of the box",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Greater ships with six industry persona templates so you can see the same engine adapted to very different contexts. (1) FinTech — the launch demo, answering real Bitcoin questions in your browser, no API key, no signup. (2) Faith — a confessional church support bot demonstrating explicit doctrinal posture. (3) Schools — an admissions and parent-questions bot for a small private school. (4) Small Business — a real-estate office front desk. (5) HealthTech — a member-services bot for a health-share community, including the explicit medical-advice refusal. (6) Startups — a product-support bot for an early-stage SaaS. Each persona ships with its own knowledge bundle, its own tone prompt, and its own bias options."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Every persona's knowledge is scoped: the FinTech bot only retrieves from the FinTech corpus, the Faith bot only retrieves from the Faith corpus, and so on. They don't bleed into each other. This is enforced at the retrieval layer by a `persona_slug` stamped on every chunk in the index. The meta-bot you're talking to right now uses the same mechanism — it's scoped to the 'greater' persona and only sees these documents about the platform itself."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/about#fork",
+      "source_label": "Greater — Forking and running it on your own domain",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Yes, you can run Greater on your own domain. The whole shell is MIT-licensed and lives at github.com/rorshockbtc/greater-than. Clone it, install with pnpm, replace the persona content under `artifacts/emerald/src/data/personas.ts` and the knowledge bundles under `artifacts/emerald/public/seeds/`, and deploy the static build to any host (Cloudflare Pages, Netlify, Vercel, your own NGINX). There is no proprietary backend you have to license to ship. The only optional server piece is the API server, which handles the human-escalation contact form and the admin feedback inbox; that's also in the repo."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Forks get the FOSS shell + the six persona scaffolds (with their committed knowledge bundles and tone prompts) for free. What forks do NOT get is Pipes — the proprietary extension layer with curated, persona-tuned knowledge bundles and operator integrations. Pipes is sold as a fractional engagement: I build the bundle, tune the persona, and integrate it into your stack. If you want to do that work yourself, the FOSS shell hands you every API surface you need. If you want me to do it, that's what hire.colonhyphenbracket.pink is for."
+        }
+      ]
+    },
+    {
+      "source_url": "https://github.com/rorshockbtc/greater-than",
+      "source_label": "github.com/rorshockbtc/greater-than — the public repo",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "The Greater source code lives at https://github.com/rorshockbtc/greater-than under the MIT license. The repository is a pnpm monorepo: `artifacts/emerald` is the marketing site + chat shell (React + Vite + TypeScript), `artifacts/api-server` is the optional Express server for contact-form escalation and the admin feedback inbox, `lib/pipes` is the manifest schema for the proprietary Pipes layer, and `scripts/` holds the seed-bundle build scripts. The README explains the FOSS-vs-proprietary split and how to bring up a local development environment."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/about",
+      "source_label": "Greater — Who built this",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Greater is built by colonhyphenbracket — a fractional architect and engineer working in public, in pink. The author publishes long-form notes at https://colonhyphenbracket.pink, short-form at https://semi.pink, Bitcoin-flavored writing at https://hash.pink, and the Pipes proprietary extension layer at https://pipes.pink. The launch demo for the platform is the FinTech bot, which answers real Bitcoin questions in the browser with no API key and no signup, citing the Optech newsletter and the bitcoin-core / bitcoin-knots commit history."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/how-it-works#bias",
+      "source_label": "Greater — Why bias is explicit, not hidden",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Greater treats bias as unavoidable. A general-purpose chatbot that claims to be neutral is doing damage by pretending — every retrieval engine has a corpus, every corpus has a perspective, and pretending otherwise leaves the user with no way to evaluate the answer. So Greater takes the opposite stance: every persona declares its perspective up front, and personas with multiple legitimate stances (the FinTech bot's Bitcoin Core vs Bitcoin Knots options are the canonical example) expose a bias toggle so the user can pick which lens they want the answer through. The toggle changes which subset of the corpus is privileged, and the answer's tone, but the underlying citations are always shown."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/how-it-works#retrieval",
+      "source_label": "Greater — How retrieval and citations work",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "When you ask Greater a question, the shell embeds your message into a vector, scores it against the in-browser vector store of indexed chunks (cosine similarity), pulls the top few chunks, and feeds them to the language model along with a strict instruction: answer ONLY from the provided snippets, cite every factual claim inline as [N], and say so plainly when the snippets don't contain the answer. That's why every answer you see comes with a 'Sources' block underneath — those are the actual chunks the model was given. If a question has no good match in the corpus, you'll get a short 'I don't know from these sources' response instead of a confident hallucination. That refusal is the feature."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/compliance",
+      "source_label": "Greater — Compliance posture",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Greater is a support-bot platform, not a regulated product. The HealthTech persona will not give medical advice — it answers member-services questions and refuses anything that crosses into clinical territory, with an explicit refusal message and a route to a human. The FinTech persona answers questions about Bitcoin protocol and software but does not give investment advice. The Faith persona is confessional, not pastoral. Operators forking Greater for regulated industries are responsible for the legal posture of their own deployment; the shell gives you the refusal scaffolding and the explicit-bias UI to make that posture honest."
+        }
+      ]
+    }
+  ]
+}

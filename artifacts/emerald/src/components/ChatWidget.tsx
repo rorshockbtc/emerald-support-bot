@@ -294,6 +294,19 @@ export function ChatWidget({
     }
   }, [isOpen]);
 
+  // Auto-grow the textarea so the user can see what they've typed
+  // when their message wraps past one line. We reset the height to
+  // 'auto' first so the scrollHeight measurement reflects the new
+  // content (otherwise it'd only grow, never shrink). The CSS
+  // `max-h-40` cap keeps a runaway paste from eating the whole
+  // chat surface — the textarea becomes scrollable past that.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
   const isPending = chatMutation.isPending || isLocalGenerating;
 
   const handleSend = async (overrideText?: string) => {
@@ -1003,7 +1016,7 @@ export function ChatWidget({
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder ?? 'Type a message'}
-                    className="w-full bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-[hsl(var(--widget-fg))] text-sm placeholder:text-[hsl(var(--widget-muted))] py-1 max-h-20"
+                    className="w-full bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-[hsl(var(--widget-fg))] text-sm placeholder:text-[hsl(var(--widget-muted))] py-1 max-h-40 overflow-y-auto leading-snug"
                     rows={1}
                   />
                 </div>

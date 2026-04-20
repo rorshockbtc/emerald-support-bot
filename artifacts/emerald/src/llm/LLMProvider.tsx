@@ -168,7 +168,10 @@ const SEED_BUNDLES: Record<string, SeedBundleConfig> = {
   // local notes that must not be committed.
   greater: {
     slug: "greater",
-    version: "v1",
+    // v2 = baseline curated bundle is now committed at
+    // public/seeds/greater.json; bumping forces clients that
+    // already stamped v1 (the empty-scrape result) to re-ingest.
+    version: "v2",
     jobLabel: "Greater meta-bot corpus (.pink properties + repo)",
     personaSlug: "greater",
     privateOverlay: true,
