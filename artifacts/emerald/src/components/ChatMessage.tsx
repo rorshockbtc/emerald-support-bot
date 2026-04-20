@@ -227,7 +227,16 @@ export function ChatMessage({
               backend is offline (FOSS fork, no DB), the catch swallows
               and we still flip the local "thanks" state so visitors
               don't see an error for what is genuinely a no-op. */}
-          {isBot && precedingUserMessage && sessionId && personaSlug && (
+          {/* Feedback is intentionally hidden for OpenClaw (BYO-LLM)
+              responses. The visitor is running their own model behind
+              their own endpoint — a thumbs-down on output the bot's
+              author can't see, can't reproduce, and doesn't control
+              would generate noise the admin dashboard can't act on. */}
+          {isBot &&
+            precedingUserMessage &&
+            sessionId &&
+            personaSlug &&
+            responseSource !== "openclaw" && (
             <FeedbackButtons
               sessionId={sessionId}
               personaSlug={personaSlug}
