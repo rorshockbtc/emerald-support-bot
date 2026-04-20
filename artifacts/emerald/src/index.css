@@ -228,7 +228,9 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Chat widget keeps a dark surface — overrides of the semantic tokens */
+/* Chat widget surface — semantic-token overrides scoped to the widget.
+   Light/dark variant is selected via data-theme on the widget root,
+   driven by the in-widget theme toggle (persisted to localStorage). */
 .chat-widget {
   --background: var(--widget-bg);
   --foreground: var(--widget-fg);
@@ -243,6 +245,20 @@
   --border: var(--widget-border);
   --input: var(--widget-input);
   color: hsl(var(--widget-fg));
+}
+
+/* Light variant — readable for visitors who find white-on-black
+   uncomfortable. Kept inside .chat-widget so it never leaks to the
+   surrounding page chrome. */
+.chat-widget[data-theme="light"] {
+  --widget-bg: 0 0% 100%;
+  --widget-fg: 0 0% 10%;
+  --widget-card: 0 0% 97%;
+  --widget-border: 0 0% 88%;
+  --widget-muted: 0 0% 38%;
+  --widget-input: 0 0% 96%;
+  --secondary: 0 0% 94%;
+  --muted: 0 0% 95%;
 }
 
 .chat-widget ::-webkit-scrollbar-thumb {

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen } from 'lucide-react';
+import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen, Sun, Moon, Code2, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
 import { ChatMessage, type MessageProps } from './ChatMessage';
@@ -16,8 +16,25 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useLLM } from '@/llm/LLMProvider';
 import { usePipe } from '@/pipes/PipeContext';
 import { useToast } from '@/hooks/use-toast';
@@ -164,6 +181,36 @@ export function ChatWidget({
   const [showPipePanel, setShowPipePanel] = useState(false);
   const [showOpenClawPanel, setShowOpenClawPanel] = useState(false);
   const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
+  /**
+   * Escalation preview dialog state. Clicking the phone icon used to
+   * fire the network call immediately — surfacing the visitor's
+   * transcript to a human without warning. The dialog now intercepts
+   * that click and shows the visitor exactly what will be sent
+   * (transcript + optional contact field) BEFORE any network call,
+   * so the LOCAL · PRIVATE badge stays honest right up until the
+   * moment the visitor explicitly opts in to escalation.
+   */
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+  const [escalateContactInfo, setEscalateContactInfo] = useState('');
+  const [escalateShowJson, setEscalateShowJson] = useState(false);
+  /**
+   * Chat-widget color theme. Defaults to dark to preserve current
+   * behavior; visitor preference is persisted in localStorage so it
+   * survives reloads. Toggled via the moon/sun item in the header
+   * settings menu. We intentionally scope this to the widget rather
+   * than the whole site because the surrounding page chrome already
+   * has its own light/dark posture (operators may want a dark page
+   * with a light chat, or vice versa).
+   */
+  const [chatTheme, setChatTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    const saved = window.localStorage.getItem('greater:chat-theme');
+    return saved === 'light' ? 'light' : 'dark';
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('greater:chat-theme', chatTheme);
+  }, [chatTheme]);
   const [isLocalGenerating, setIsLocalGenerating] = useState(false);
   /**
    * Tracks whether we've already injected the "cloud is rate-limited"
@@ -677,27 +724,71 @@ export function ChatWidget({
     }
   };
 
-  const handleEscalate = async () => {
+  /**
+   * Build the exact payload the escalation network call will send,
+   * given the current transcript and the visitor's optional contact
+   * field. Pure function (no side effects, no network) so the preview
+   * dialog can render it AND the actual send can use the identical
+   * value — no risk of the preview drifting from what's actually
+   * transmitted.
+   *
+   * Contact info is appended as a synthetic system turn rather than
+   * a separate API field so we don't have to change the backend
+   * schema; the human reading the ticket sees it inline at the end
+   * of the transcript where they'd expect "how to reach this
+   * person" to live.
+   */
+  const buildEscalationPayload = () => {
+    const realTranscript = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp.toISOString(),
+    }));
+    const contact = escalateContactInfo.trim();
+    const chatHistory = contact
+      ? [
+          ...realTranscript,
+          {
+            role: 'system' as const,
+            content: `Visitor's preferred contact: ${contact}`,
+            timestamp: new Date().toISOString(),
+          },
+        ]
+      : realTranscript;
+    return {
+      sessionId,
+      subject: hasSecurityAlertSession
+        ? 'URGENT: Possible Account Compromise'
+        : 'General Support Escalation',
+      chatHistory,
+    };
+  };
+
+  /**
+   * Click handler on the header phone icon. Replaces the prior
+   * fire-immediately behavior — now opens the preview dialog so
+   * the visitor sees what will be sent before consenting.
+   */
+  const handleEscalate = () => {
+    setShowEscalateDialog(true);
+  };
+
+  /**
+   * Actually send the escalation. Called only after the visitor
+   * explicitly clicks "Send to Support" in the preview dialog.
+   */
+  const confirmEscalate = async () => {
     try {
-      const history = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp.toISOString(),
-      }));
-
-      const res = await escalateMutation.mutateAsync({
-        data: {
-          sessionId,
-          subject: hasSecurityAlertSession ? 'URGENT: Possible Account Compromise' : 'General Support Escalation',
-          chatHistory: history,
-        },
-      });
-
+      const payload = buildEscalationPayload();
+      const res = await escalateMutation.mutateAsync({ data: payload });
       if (res.success) {
         toast({
           title: 'Ticket Escalated',
           description: 'A human agent has been notified and will review your session shortly.',
         });
+        setShowEscalateDialog(false);
+        setEscalateContactInfo('');
+        setEscalateShowJson(false);
       }
     } catch {
       toast({
@@ -725,21 +816,28 @@ export function ChatWidget({
             animate={isFullScreen ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
             exit={isFullScreen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
+            data-theme={chatTheme}
             className={cn(
               'chat-widget fixed z-50 flex flex-col bg-[hsl(var(--widget-bg))] shadow-2xl overflow-hidden',
               isFullScreen ? 'inset-0 rounded-none' : 'bottom-6 right-6 rounded-2xl border border-[hsl(var(--widget-border))]',
             )}
             style={!isFullScreen ? { width: 400, height: 560 } : undefined}
           >
-            <div className="flex items-center justify-between px-4 py-3 bg-[hsl(220,13%,8%)] border-b border-[hsl(var(--widget-border))]">
+            <TooltipProvider delayDuration={200}>
+            <div className="flex items-center justify-between px-4 py-3 bg-[hsl(var(--widget-card))] border-b border-[hsl(var(--widget-border))]">
               <div className="flex items-center gap-3 min-w-0">
-                <button
-                  onClick={() => { setIsOpen(false); setIsFullScreen(false); }}
-                  className="p-1 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
-                  aria-label="Back"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { setIsOpen(false); setIsFullScreen(false); }}
+                      className="p-1 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                      aria-label="Close chat"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Close chat</TooltipContent>
+                </Tooltip>
                 <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
@@ -757,28 +855,39 @@ export function ChatWidget({
               </div>
               <div className="flex items-center gap-1">
                 {onReopenScenario && (
-                  <button
-                    onClick={onReopenScenario}
-                    className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
-                    title="What's this demo?"
-                    aria-label="What's this demo?"
-                    data-testid="button-reopen-scenario"
-                  >
-                    <Info className="w-4 h-4" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={onReopenScenario}
+                        className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                        aria-label="What's this demo?"
+                        data-testid="button-reopen-scenario"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">What&apos;s this demo?</TooltipContent>
+                  </Tooltip>
                 )}
                 <ModelInfoPopover />
                 <DropdownMenu>
+                  {/*
+                    Intentionally NOT wrapped in <Tooltip> — Radix's
+                    nested asChild (TooltipTrigger > DropdownMenuTrigger)
+                    has known ref-forwarding edge cases and the menu
+                    opens on click anyway, making intent self-evident.
+                    aria-label keeps screen-reader users covered.
+                  */}
                   <DropdownMenuTrigger asChild>
                     <button
                       className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                      aria-label="Settings menu"
                       title="Settings"
-                      aria-label="Settings"
                     >
                       <Settings className="w-4 h-4" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onSelect={() => setShowKnowledgePanel(true)}>
                       <Database className="w-3.5 h-3.5 mr-2" />
                       Manage knowledge base
@@ -812,31 +921,68 @@ export function ChatWidget({
                       <Ticket className="w-3.5 h-3.5 mr-2" />
                       Show what would have been escalated
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        // Prevent the menu's default close-on-select so the
+                        // visitor can flip themes and immediately see the
+                        // result without re-opening the menu.
+                        e.preventDefault();
+                        setChatTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+                      }}
+                      data-testid="menuitem-theme-toggle"
+                    >
+                      {chatTheme === 'dark' ? (
+                        <>
+                          <Sun className="w-3.5 h-3.5 mr-2" />
+                          Switch to light mode
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="w-3.5 h-3.5 mr-2" />
+                          Switch to dark mode
+                        </>
+                      )}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <button
-                  onClick={handleEscalate}
-                  disabled={escalateMutation.isPending}
-                  className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
-                  title="Escalate to Human"
-                  aria-label="Escalate to Human"
-                >
-                  {escalateMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <PhoneCall className="w-4 h-4" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setIsFullScreen(!isFullScreen)}
-                  className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
-                  title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
-                  aria-label={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
-                >
-                  {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleEscalate}
+                      disabled={escalateMutation.isPending}
+                      className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                      aria-label="Send transcript to a human"
+                      data-testid="button-escalate"
+                    >
+                      {escalateMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <PhoneCall className="w-4 h-4" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Send transcript to a human (preview first)
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIsFullScreen(!isFullScreen)}
+                      className="p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                      aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+                    >
+                      {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
+            </TooltipProvider>
 
             <AnimatePresence>
               {hasSecurityAlertSession && (
@@ -1007,7 +1153,7 @@ export function ChatWidget({
               </div>
             </div>
 
-            <div className="px-4 py-3 border-t border-[hsl(var(--widget-border))] bg-[hsl(220,13%,8%)]">
+            <div className="px-4 py-3 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))]">
               {pipe.effectiveBiasOptions.length > 1 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--widget-muted))] shrink-0">
@@ -1116,6 +1262,157 @@ export function ChatWidget({
         isOpen={showOpenClawPanel}
         onClose={() => setShowOpenClawPanel(false)}
       />
+
+      {/*
+        Escalation preview dialog. Replaces the prior fire-immediately
+        behavior on the phone-icon click. The whole point of Greater is
+        that message content stays in the visitor's browser; the
+        moment they click "send to a human" we have to break that
+        guarantee, so the visitor needs to see exactly what's about
+        to leave their machine — including the ability to inspect the
+        raw JSON payload — and explicitly opt in. We also offer (but
+        do not require) an optional contact field so the responding
+        human knows where to reach back; without it, the company sees
+        an anonymous transcript and a session id only.
+      */}
+      <Dialog
+        open={showEscalateDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowEscalateDialog(false);
+            setEscalateShowJson(false);
+          }
+        }}
+      >
+        <DialogContent
+          className="max-w-2xl max-h-[85vh] flex flex-col"
+          data-testid="dialog-escalate-preview"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneCall className="w-4 h-4 text-primary" />
+              Send transcript to a human?
+            </DialogTitle>
+            <DialogDescription>
+              Until now, every message in this chat has stayed in your
+              browser. Sending will transmit the full transcript below
+              to the support team — review it first, redact anything
+              sensitive by editing the chat or starting over, and
+              optionally tell us how to reach you.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Transcript ({messages.length} {messages.length === 1 ? 'message' : 'messages'})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEscalateShowJson((v) => !v)}
+                  className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-toggle-escalate-json"
+                >
+                  <Code2 className="w-3 h-3" />
+                  {escalateShowJson ? 'Hide raw JSON' : 'Show raw JSON'}
+                </button>
+              </div>
+              {escalateShowJson ? (
+                <pre className="text-xs font-mono bg-background border border-border rounded p-2 overflow-x-auto max-h-64 whitespace-pre-wrap break-all">
+                  {JSON.stringify(buildEscalationPayload(), null, 2)}
+                </pre>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {messages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">
+                      (No messages yet — escalating now would only send
+                      the session id and your contact, if provided.)
+                    </p>
+                  ) : (
+                    messages.map((m, i) => (
+                      <div
+                        key={i}
+                        className="text-xs border-l-2 pl-2"
+                        style={{
+                          borderColor:
+                            m.role === 'user'
+                              ? 'hsl(var(--primary))'
+                              : 'hsl(var(--muted-foreground) / 0.4)',
+                        }}
+                      >
+                        <span className="font-semibold uppercase tracking-wide opacity-70">
+                          {m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Bot' : m.role}
+                        </span>
+                        <p className="whitespace-pre-wrap mt-0.5">{m.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="escalate-contact"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 mb-1.5"
+              >
+                <Mail className="w-3 h-3" />
+                How can we reach you? (optional)
+              </label>
+              <Input
+                id="escalate-contact"
+                type="text"
+                placeholder="email, username, or however you prefer"
+                value={escalateContactInfo}
+                onChange={(e) => setEscalateContactInfo(e.target.value)}
+                data-testid="input-escalate-contact"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Leave blank to send anonymously — the team will see the
+                transcript and a session id only.
+              </p>
+            </div>
+
+            {hasSecurityAlertSession && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
+                <strong>This will be flagged URGENT</strong> because a
+                possible-compromise alert is active in this session.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEscalateDialog(false);
+                setEscalateShowJson(false);
+              }}
+              data-testid="button-escalate-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmEscalate}
+              disabled={escalateMutation.isPending}
+              data-testid="button-escalate-confirm"
+            >
+              {escalateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  <PhoneCall className="w-4 h-4 mr-2" />
+                  Send to support
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
