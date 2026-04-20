@@ -62,6 +62,14 @@ artifacts/emerald/public/weights/
 # scripts/build-bitcoin-seed.ts from public sources, with bias tags)
 # is proprietary to the hosted deployment and is excluded.
 artifacts/emerald/public/seeds/bitcoin.json
+# Greater meta-bot bundles. The public bundle is built from .pink
+# properties + the public repo README — public sources, but the
+# build artifact still carries operator-controlled framing so we
+# keep it out of git and rebuild on deploy. The optional private
+# overlay (greater-private.json) is the operator's local notes
+# and MUST NOT be committed. A `.example` skeleton is committed.
+artifacts/emerald/public/seeds/greater.json
+artifacts/emerald/public/seeds/greater-private.json
 *.private.md
 *.interview.md
 *.gguf

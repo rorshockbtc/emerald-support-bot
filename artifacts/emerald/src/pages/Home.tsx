@@ -1,22 +1,62 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useLLM } from "@/llm/LLMProvider";
 import { ArrowRight, Lock, Cpu, FileText, AlertCircle, MessageSquare, Github } from "lucide-react";
 import { personas } from "@/data/personas";
 import { PersonaCard } from "@/components/PersonaCard";
 import { ContactCTASection } from "@/components/ContactCTASection";
+import { ChatWidget } from "@/components/ChatWidget";
+import { PipeProvider } from "@/pipes/PipeContext";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import heroImage from "@/assets/greater-hero.png";
+import { GREATER_META_BOT } from "@/data/greater-meta-bot";
 
 export default function Home() {
   // Preserve the static index.html <title> on /.
   useDocumentTitle(null);
+  // Queue the meta-bot seed bundle on mount, mirroring how
+  // BlockstreamDemo + PersonaDemoShell trigger their own corpora.
+  // The provider serializes installs behind the embedder readiness,
+  // so it's safe to call before the model is loaded; effect re-runs
+  // are de-duped by `installedBundleSlugsRef` inside the provider.
+  const llm = useLLM();
+  useEffect(() => {
+    llm.requestSeedBundle("greater");
+  }, [llm]);
   return (
     <>
       <Hero />
       <PrinciplesStrip />
       <PersonasGrid />
       <ContactCTASection tone="muted" />
+      {/*
+        Greater meta-bot — the dogfooding chat widget. Same engine,
+        same UI, same persona-scoped retrieval as the industry demos;
+        only the corpus and system prompt differ. Pinned bottom-right
+        so visitors who land on the marketing page can ask "how does
+        this actually work?" without leaving the page.
+      */}
+      {/*
+        ChatWidget calls usePipe(), so it must mount inside a
+        PipeProvider. The "greater" persona has no Pipe registered
+        (and no persona-default bias) — getActivePipe returns null
+        and the provider falls back to biasSource="none", which
+        renders the widget without a bias selector. That's exactly
+        what we want for the meta-bot: no toggles, just answers.
+      */}
+      <PipeProvider persona="greater">
+        <ChatWidget
+          personaSlug={GREATER_META_BOT.slug}
+          personaBrand={GREATER_META_BOT.brand}
+          personaSystemPrompt={GREATER_META_BOT.systemPrompt}
+          personaExampleTopics={[...GREATER_META_BOT.exampleTopics]}
+          suggestedPrompts={[...GREATER_META_BOT.suggestedPrompts]}
+          welcomeMessage={GREATER_META_BOT.welcome}
+          placeholder={GREATER_META_BOT.placeholder}
+          bundleLabel="Greater meta-bot corpus"
+        />
+      </PipeProvider>
     </>
   );
 }

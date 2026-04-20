@@ -66,6 +66,13 @@ export const PIPE_PERSONAS = [
   "schools",
   "small-business",
   "healthtech",
+  // Greater meta-bot — the dogfooding chatbot pinned to the
+  // marketing home page. No Pipe is ever registered against this
+  // slug (the meta-bot has no bias toggles and no proprietary
+  // overlay-prompts story to tell), but the slug must round-trip
+  // through the PipeProvider so the shared ChatWidget can mount
+  // in the same code path the persona demos use.
+  "greater",
 ] as const;
 export type PipePersona = (typeof PIPE_PERSONAS)[number];
 

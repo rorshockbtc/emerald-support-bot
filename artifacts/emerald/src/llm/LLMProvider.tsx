@@ -63,6 +63,15 @@ interface SeedBundleDoc {
   /** Per-page title inside the bundle. */
   source_label: string;
   bias?: "core" | "knots" | "neutral";
+  /**
+   * Marks a doc as coming from the operator's private overlay (e.g.
+   * `greater-private.json`). The loader rewrites `page_url` to an
+   * `internal://` sentinel for these docs so the citation UI can
+   * render them as "internal note" without a clickable link. The
+   * source_label is still shown as the headline so the operator can
+   * recognise their own notes.
+   */
+  private?: boolean;
   chunks: { text: string; chunk_index: number }[];
 }
 
@@ -100,6 +109,19 @@ interface SeedBundleConfig {
    * persona (since the FinTech route is the Blockstream demo).
    */
   personaSlug: string;
+  /**
+   * When true, the loader also attempts to fetch
+   * `<base>/seeds/<slug>-private.json` and merges it as an overlay
+   * after the public bundle. Overlay docs are stored under a separate
+   * job_id (`seed-bundle:<slug>:private`) so the operator can update
+   * them independently of the public bundle, and their `page_url` is
+   * rewritten to an `internal://` sentinel so the citation UI shows
+   * "internal note" instead of an outbound link. Used by the Greater
+   * meta-bot to merge operator-local notes that must not be committed.
+   */
+  privateOverlay?: boolean;
+  /** Friendly label for the private-overlay job grouping. */
+  privateJobLabel?: string;
 }
 
 const SEED_BUNDLES: Record<string, SeedBundleConfig> = {
@@ -138,6 +160,19 @@ const SEED_BUNDLES: Record<string, SeedBundleConfig> = {
     version: "v1",
     jobLabel: "HealthTech demo seed (MutualHealth)",
     personaSlug: "healthtech",
+  },
+  // Greater meta-bot: dogfooding the platform on the marketing site.
+  // The public bundle is built by `scripts/src/build-greater-seed.ts`
+  // from the `.pink` properties + the public repo README; an optional
+  // private overlay (`greater-private.json`) carries the operator's
+  // local notes that must not be committed.
+  greater: {
+    slug: "greater",
+    version: "v1",
+    jobLabel: "Greater meta-bot corpus (.pink properties + repo)",
+    personaSlug: "greater",
+    privateOverlay: true,
+    privateJobLabel: "Greater meta-bot — operator's private notes",
   },
 };
 
@@ -531,37 +566,73 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       }
       if (installedBundleSlugsRef.current.has(slug)) return;
       const flagKey = bundleFlagKey(slug);
-      const flag = await getMetaFlag(flagKey);
-      if (flag?.value === cfg.version || flag?.value === "absent") {
-        installedBundleSlugsRef.current.add(slug);
-        return;
-      }
-
-      const url = `${import.meta.env.BASE_URL}seeds/${slug}.json`;
-      let bundle: SeedBundle | null = null;
-      try {
-        const res = await fetch(url, { cache: "no-cache" });
-        if (!res.ok) {
-          await setMetaFlag(flagKey, "absent");
-          installedBundleSlugsRef.current.add(slug);
-          return;
-        }
-        bundle = (await res.json()) as SeedBundle;
-      } catch {
-        await setMetaFlag(flagKey, "absent");
-        installedBundleSlugsRef.current.add(slug);
-        return;
-      }
-
-      if (!bundle?.documents?.length) {
-        await setMetaFlag(flagKey, "absent");
-        installedBundleSlugsRef.current.add(slug);
-        return;
-      }
-
       const jobId = bundleJobId(slug);
       const jobRoot = bundleRootUrl(slug);
       const jobKind = slug === "bitcoin" ? "bitcoin-bundle" : "seed-bundle";
+
+      // Public bundle path: install only when the persisted flag is
+      // not at the configured version. We DO NOT short-circuit the
+      // whole function here — the private overlay below has its own
+      // versioned flag and must be re-checked on every session even
+      // when the public bundle is already at the latest version.
+      const flag = await getMetaFlag(flagKey);
+      const publicNeedsInstall =
+        flag?.value !== cfg.version && flag?.value !== "absent";
+
+      if (publicNeedsInstall) {
+        const url = `${import.meta.env.BASE_URL}seeds/${slug}.json`;
+        let bundle: SeedBundle | null = null;
+        try {
+          const res = await fetch(url, { cache: "no-cache" });
+          if (!res.ok) {
+            await setMetaFlag(flagKey, "absent");
+          } else {
+            bundle = (await res.json()) as SeedBundle;
+          }
+        } catch {
+          await setMetaFlag(flagKey, "absent");
+        }
+
+        if (bundle?.documents?.length) {
+          await installPublicBundle(bundle, cfg, slug, jobId, jobRoot, jobKind);
+        } else if (flag?.value !== "absent") {
+          // Already stamped above on the failure paths; this catches
+          // the "valid response but empty bundle" case.
+          await setMetaFlag(flagKey, "absent");
+        }
+      }
+
+      // Private-overlay check always runs, falling through when
+      // cfg.privateOverlay is unset.
+      if (cfg.privateOverlay) {
+        await ensurePrivateOverlay(cfg, slug, flagKey, jobId);
+      }
+
+      installedBundleSlugsRef.current.add(slug);
+    },
+    // installPublicBundle / ensurePrivateOverlay are stable closures
+    // declared below this hook; they only depend on callWorker, which
+    // is captured here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [callWorker],
+  );
+
+  /**
+   * Install the public seed bundle: embed each chunk, persist with
+   * persona scope, and stamp the flag to cfg.version so subsequent
+   * sessions skip this work. Extracted from ensureSeedBundle so the
+   * private-overlay branch can run regardless of public-bundle state.
+   */
+  const installPublicBundle = useCallback(
+    async (
+      bundle: SeedBundle,
+      cfg: SeedBundleConfig,
+      slug: string,
+      jobId: string,
+      jobRoot: string,
+      jobKind: "bitcoin-bundle" | "seed-bundle",
+    ): Promise<void> => {
+      const flagKey = bundleFlagKey(slug);
       const totalChunks = bundle.documents.reduce(
         (n, d) => n + d.chunks.length,
         0,
@@ -605,13 +676,94 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         }
       }
       await setMetaFlag(flagKey, cfg.version);
-      installedBundleSlugsRef.current.add(slug);
       setBundleProgress({
         slug,
         total_chunks: totalChunks,
         done_chunks: done,
         done: true,
       });
+    },
+    [callWorker],
+  );
+
+  /**
+   * Install (or refresh) the optional private-overlay bundle for a
+   * seed. Versioned independently of the public bundle: the operator
+   * bumps the overlay JSON's `version` field after editing the file
+   * and the next page load picks up the change. Missing/404 responses
+   * are stamped `absent` so the FOSS-fork case is silent and
+   * remembered. Overlay docs land under their own job_id slice so
+   * deleting a note locally and bumping the version actually removes
+   * the chunk from the index. Citation page_url is rewritten to an
+   * `internal://` sentinel so ChatMessage renders these as
+   * "internal note" rather than as outbound links.
+   */
+  const ensurePrivateOverlay = useCallback(
+    async (
+      cfg: SeedBundleConfig,
+      slug: string,
+      flagKey: string,
+      jobId: string,
+    ): Promise<void> => {
+      const privFlagKey = `${flagKey}:private`;
+      const privUrl = `${import.meta.env.BASE_URL}seeds/${slug}-private.json`;
+      let privBundle: SeedBundle | null = null;
+      try {
+        const res = await fetch(privUrl, { cache: "no-cache" });
+        if (res.ok) {
+          privBundle = (await res.json()) as SeedBundle;
+        } else {
+          await setMetaFlag(privFlagKey, "absent");
+          return;
+        }
+      } catch {
+        await setMetaFlag(privFlagKey, "absent");
+        return;
+      }
+
+      if (!privBundle?.documents?.length) {
+        await setMetaFlag(privFlagKey, "absent");
+        return;
+      }
+
+      const privVersion = privBundle.version ?? "v1";
+      const existingFlag = await getMetaFlag(privFlagKey);
+      if (existingFlag?.value === privVersion) return;
+
+      const privJobId = `${jobId}:private`;
+      // Replace the prior overlay slice in full so a removed note
+      // doesn't linger after the operator deletes it.
+      await deleteByJob(privJobId);
+      const privInstalledAt = Date.now();
+      const privLabel =
+        cfg.privateJobLabel ?? `${cfg.jobLabel} — private overlay`;
+      for (const doc of privBundle.documents) {
+        const bias = doc.bias ?? "neutral";
+        for (const ch of doc.chunks) {
+          const vec = await callWorker<number[]>("embed", { text: ch.text });
+          const sentinelUrl = `internal://${slug}-private/${encodeURIComponent(
+            doc.source_label || doc.source_url || "note",
+          )}#${ch.chunk_index}`;
+          await putChunkWithVector(
+            {
+              id: `${privJobId}::${doc.source_url}#${ch.chunk_index}`,
+              job_id: privJobId,
+              job_root_url: `internal://seed-bundle/${slug}-private`,
+              job_label: privLabel,
+              job_kind: "seed-bundle",
+              page_url: sentinelUrl,
+              page_label: doc.source_label,
+              chunk_index: ch.chunk_index,
+              text: ch.text,
+              bias,
+              persona_slug: cfg.personaSlug,
+              indexed_at: privInstalledAt,
+            },
+            vec,
+          );
+        }
+      }
+      await setMetaFlag(privFlagKey, privVersion);
     },
     [callWorker],
   );

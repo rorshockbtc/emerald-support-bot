@@ -285,19 +285,50 @@ export function ChatMessage({
                       className="border-l-2 border-emerald-500/40 pl-3 rounded-sm transition-shadow"
                       data-testid={`citation-source-${i + 1}`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-mono text-[10px] text-muted-foreground">
                           [{i + 1}] sim {c.score.toFixed(3)}
                         </span>
-                        <a
-                          href={c.page_url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
-                        >
-                          {c.page_label}
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                        {(() => {
+                          // Strict scheme allowlist: only http(s) URLs
+                          // become clickable links. Anything else —
+                          // `internal://` overlay notes, future
+                          // sentinels, or attacker-controlled schemes
+                          // like `javascript:` / `data:` slipping in
+                          // via a malformed bundle — renders as a
+                          // non-clickable "internal note" badge so the
+                          // visitor still sees the citation but can't
+                          // be redirected to a hostile target.
+                          const isHttpUrl =
+                            c.page_url.startsWith("https://") ||
+                            c.page_url.startsWith("http://");
+                          if (isHttpUrl) {
+                            return (
+                              <a
+                                href={c.page_url}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                                className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
+                              >
+                                {c.page_label}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            );
+                          }
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1 text-amber-400/90"
+                              title="This citation has no public URL — it comes from operator notes or a non-web source."
+                            >
+                              <span className="font-mono text-[10px] uppercase tracking-wider px-1.5 py-px rounded bg-amber-500/10 border border-amber-500/30">
+                                internal note
+                              </span>
+                              <span className="text-amber-200/90">
+                                {c.page_label}
+                              </span>
+                            </span>
+                          );
+                        })()}
                       </div>
                       <p className="text-muted-foreground line-clamp-3 leading-relaxed">
                         {c.text}
