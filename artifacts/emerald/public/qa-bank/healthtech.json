@@ -42,6 +42,86 @@
     {
       "q": "Who is MutualHealth?",
       "a": "MutualHealth was founded in 2018 and serves approximately 28,000 households across all 50 states [1]. We don't have networks, plans, deductibles, or copays in the insurance sense. We have shares, sharing windows, personal responsibility amounts, and a Member Guidelines document that defines what is and isn't eligible [1]."
+    },
+    {
+      "q": "How do you protect my personal info?",
+      "a": "We take data protection seriously. Since we're not a covered entity under HIPAA, we follow HIPAA-equivalent controls to safeguard member medical information. This means we don't sell or share member data with third parties for marketing or analytics, and we publish de-identified aggregate statistics only. Our compliance team ensures our data handling practices meet the highest standards."
+    },
+    {
+      "q": "Can I use this chat for billing questions?",
+      "a": "Yes, you can use this chat for general billing questions. However, for specific questions about your account or a particular bill, it's best to contact our member services team directly. They can provide more detailed assistance and ensure any sensitive information is handled properly."
+    },
+    {
+      "q": "Do you have a mobile app?",
+      "a": "We don't have a mobile app at this time, but our website is optimized for mobile devices. You can access your account and submit medical needs through our website on your smartphone or tablet. We prioritize security and compliance, so any future app development will strictly adhere to our privacy and data protection standards."
+    },
+    {
+      "q": "How do I know if a procedure is covered?",
+      "a": "To determine if a procedure is covered, please refer to our Member Guidelines. These guidelines outline what is considered an eligible medical need. If you're still unsure, you can contact our member services team for clarification. They can help you understand what is covered under your specific membership tier."
+    },
+    {
+      "q": "Can you recommend a doctor?",
+      "a": "No, we cannot recommend specific doctors or medical professionals. For any medical questions or concerns, we advise you to consult with a licensed medical professional. They can provide personalized advice and recommendations based on your specific health needs."
+    },
+    {
+      "q": "How long does it take to process a new membership?",
+      "a": "Processing times for new memberships can vary, but we typically complete the process within a few business days. Once your membership is active, you'll receive a welcome packet with detailed information about your benefits and how to submit medical needs. If you have any questions during the process, don't hesitate to reach out to our member services team."
+    },
+    {
+      "q": "Do you handle mental health needs?",
+      "a": "We understand the importance of mental health. However, our coverage for mental health services is limited to specific situations outlined in our Member Guidelines. For detailed information on what is covered, please review the guidelines or contact our member services team. They can provide more insight into our mental health coverage policies."
+    },
+    {
+      "q": "Can I cancel my membership at any time?",
+      "a": "Yes, you can cancel your membership, but please note that cancellations are subject to certain terms and conditions outlined in our Member Guidelines. It's essential to review these guidelines before making any decisions about your membership. If you have questions or concerns, our member services team is available to assist you."
+    },
+    {
+      "q": "How do you ensure my data is secure?",
+      "a": "Data security is a top priority for us. We implement robust security measures, including encryption and secure data storage, to protect member information. Our systems are designed to comply with the highest security standards, and we regularly update our protocols to address any new security threats."
+    },
+    {
+      "q": "Can I get a copy of my medical records?",
+      "a": "Yes, you can request a copy of your medical records. However, please note that this process may involve certain procedures and potentially require the involvement of your healthcare providers. For assistance with requesting medical records, we recommend contacting our member services team or your healthcare provider directly."
+    },
+    {
+      "q": "Do you offer any wellness programs?",
+      "a": "While we don't offer traditional wellness programs, we encourage our members to prioritize preventive care. Many of our members find value in the health and wellness resources provided through our community networks. For more information on available resources, you can contact our member services team."
+    },
+    {
+      "q": "How do I report a change in my personal info?",
+      "a": "To report a change in your personal information, please contact our member services team directly. They will guide you through the process of updating your records to ensure your information remains accurate and secure. This is an important step in maintaining the integrity of our member data."
+    },
+    {
+      "q": "Can I use this chat for technical issues?",
+      "a": "Yes, you can use this chat for general technical questions or issues related to our website or services. However, for more complex technical problems, we may need to escalate your inquiry to our technical support team. They will work with you to resolve the issue as quickly as possible."
+    },
+    {
+      "q": "Do you have a list of in-network providers?",
+      "a": "We don't have a traditional network of providers. Instead, our members are free to choose any healthcare provider they prefer. We reimburse eligible medical expenses based on our Member Guidelines, regardless of the provider. For questions about specific providers or reimbursement, our member services team is available to help."
+    },
+    {
+      "q": "How do I check the status of my medical need submission?",
+      "a": "To check the status of your medical need submission, you can log into your account on our website. There, you'll find a section dedicated to tracking the progress of your submissions. If you have any questions or concerns about the status, feel free to contact our member services team for assistance."
+    },
+    {
+      "q": "Can you help with billing disputes?",
+      "a": "Yes, we can assist with billing disputes. If you have a question or concern about a bill, please contact our member services team. They will work with you and the provider to resolve the issue fairly and efficiently. We're committed to ensuring our members have a clear understanding of their financial responsibilities."
+    },
+    {
+      "q": "Do you cover dental or vision care?",
+      "a": "Our standard coverage does not include dental or vision care. However, some of our membership tiers may offer optional add-ons for these services. For detailed information on what is covered under your specific membership, please review our Member Guidelines or contact our member services team."
+    },
+    {
+      "q": "How do I know if I'm eligible for membership?",
+      "a": "To determine if you're eligible for membership, please review our membership criteria outlined on our website. If you have questions or need further clarification, our member services team is available to help. They can guide you through the eligibility process and answer any questions you may have."
+    },
+    {
+      "q": "Can I get advice on my diet?",
+      "a": "No, we cannot provide personalized dietary advice. For any questions about your diet or nutrition, we recommend consulting with a licensed healthcare professional or a registered dietitian. They can offer tailored advice based on your specific health needs and goals."
+    },
+    {
+      "q": "Do you have any resources for managing chronic conditions?",
+      "a": "While we don't offer direct management programs for chronic conditions, our community often shares resources and support for members dealing with ongoing health issues. For personalized advice or management plans, we encourage you to consult with your healthcare provider. They can provide guidance and recommendations tailored to your specific condition and needs."
     }
   ]
 }

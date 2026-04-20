@@ -57,6 +57,19 @@ export interface MessageProps {
    * feedback row can record what they actually asked.
    */
   precedingUserMessage?: string;
+  /**
+   * Wall-clock ms it took to produce this reply (qa-cache lookup,
+   * local inference, or cloud round-trip). Posted with feedback so
+   * the admin dashboard can correlate slow replies with thumbs-down.
+   */
+  latencyMs?: number;
+  /**
+   * Cosine similarity for whichever retrieval signal best describes
+   * this reply: the qa-cache match score for cached replies, or the
+   * top retrieved chunk's score for local inference. Posted with
+   * feedback so the dashboard can spot weak-retrieval thumbs-down.
+   */
+  cosineScore?: number;
 }
 
 export function ChatMessage({
@@ -79,6 +92,8 @@ export function ChatMessage({
   sessionId,
   personaSlug,
   precedingUserMessage,
+  latencyMs,
+  cosineScore,
 }: MessageProps) {
   const isBot = role === 'bot';
   const { toast } = useToast();
@@ -220,6 +235,8 @@ export function ChatMessage({
               botReply={content}
               responseSource={responseSource ?? "local"}
               biasLabel={biasLabel}
+              latencyMs={latencyMs}
+              cosineScore={cosineScore}
             />
           )}
         </div>
@@ -401,6 +418,8 @@ function FeedbackButtons({
   botReply,
   responseSource,
   biasLabel,
+  latencyMs,
+  cosineScore,
 }: {
   sessionId: string;
   personaSlug: string;
@@ -408,7 +427,10 @@ function FeedbackButtons({
   botReply: string;
   responseSource: ResponseSource;
   biasLabel?: string;
+  latencyMs?: number;
+  cosineScore?: number;
 }) {
+  const { toast } = useToast();
   const [state, setState] = useState<"idle" | "comment" | "submitting" | "thanked" | "error">("idle");
   const [given, setGiven] = useState<1 | -1 | null>(null);
   const [comment, setComment] = useState("");
@@ -447,6 +469,11 @@ function FeedbackButtons({
           botReply: botReply.slice(0, 8000),
           responseSource,
           biasLabel,
+          latencyMs: typeof latencyMs === "number" ? Math.max(0, Math.round(latencyMs)) : undefined,
+          cosineScore:
+            typeof cosineScore === "number" && Number.isFinite(cosineScore)
+              ? Math.max(0, Math.min(1, cosineScore))
+              : undefined,
           comment: withComment ? withComment.slice(0, 2000) : undefined,
         }),
       });
@@ -455,10 +482,15 @@ function FeedbackButtons({
       // affordance instead. 404 is the FOSS-fork case (no backend at
       // all), and we treat that as a soft-success no-op so visitors
       // running the source-only build aren't punished.
-      if (res.ok) {
+      if (res.ok || res.status === 404) {
         setState("thanked");
-      } else if (res.status === 404) {
-        setState("thanked");
+        toast({
+          title: rating === 1 ? "Feedback recorded" : "Feedback noted",
+          description:
+            rating === 1
+              ? "Thanks — the upvote was logged."
+              : "Thanks — we'll review what went wrong.",
+        });
       } else {
         setState("error");
       }
@@ -466,6 +498,10 @@ function FeedbackButtons({
       // Network failure (FOSS fork, transient offline). Treat as a
       // soft success — there's nothing the user can do about it.
       setState("thanked");
+      toast({
+        title: "Feedback noted",
+        description: "Saved locally; the backend isn't reachable.",
+      });
     }
   };
 

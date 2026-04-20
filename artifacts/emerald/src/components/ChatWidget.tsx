@@ -294,10 +294,10 @@ export function ChatWidget({
 
   const isPending = chatMutation.isPending || isLocalGenerating;
 
-  const handleSend = async () => {
-    if (!input.trim() || isPending) return;
+  const handleSend = async (overrideText?: string) => {
+    const userText = (overrideText ?? input).trim();
+    if (!userText || isPending) return;
 
-    const userText = input.trim();
     setInput('');
 
     const userMsg: MessageProps = {
@@ -316,6 +316,7 @@ export function ChatWidget({
     // a cloud call. Failures here are silent: the cache is best-effort.
     if (personaSlug) {
       try {
+        const cacheStart = performance.now();
         const hit = await llm.tryQaCache(userText, personaSlug);
         if (hit) {
           const botMsg: MessageProps = {
@@ -329,6 +330,8 @@ export function ChatWidget({
             responseSource: 'qa-cache',
             biasLabel: activeBiasOption?.label,
             biasId: activeBiasOption ? pipe.activeBiasId : undefined,
+            cosineScore: hit.score,
+            latencyMs: Math.round(performance.now() - cacheStart),
           };
           setMessages((prev) => [...prev, botMsg]);
           return;
@@ -437,9 +440,18 @@ export function ChatWidget({
       if (personaSlug) {
         askOptions = { ...(askOptions ?? {}), personaSlug };
       }
+      const askStart = performance.now();
       const answer = await llm.ask(history, userText, askOptions);
+      const askLatency = Math.round(performance.now() - askStart);
       const isOpenClaw = answer.source === 'openclaw';
       const isQaCache = answer.source === 'qa-cache';
+      // Top retrieval similarity from the thought trace (when present)
+      // is a useful retrieval-quality signal alongside the binary
+      // thumbs rating; record it on the message so it's posted with
+      // any feedback the visitor leaves.
+      const topRetrievalScore =
+        answer.thoughtTrace?.chunks?.[0]?.score ??
+        undefined;
       const botMsg: MessageProps = {
         id: uuidv4(),
         role: 'bot',
@@ -456,6 +468,8 @@ export function ChatWidget({
         biasLabel: activeBiasOption?.label,
         biasId: activeBiasOption ? pipe.activeBiasId : undefined,
         localOnly: localOnlyDueToCap,
+        latencyMs: askLatency,
+        cosineScore: topRetrievalScore,
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
@@ -917,20 +931,13 @@ export function ChatWidget({
                         key={prompt}
                         type="button"
                         onClick={() => {
-                          // Pre-fill the input AND auto-send. Setting state
-                          // is async, so we hand the literal text to a
-                          // microtask-deferred send rather than waiting for
-                          // the controlled input to round-trip.
-                          setInput(prompt);
-                          // Use a flushed-on-next-tick send by calling
-                          // handleSend directly; it reads `input.trim()`,
-                          // so we briefly stash the value then clear:
-                          // simplest is to inline-send by mutating input
-                          // state then invoking handleSend on next frame.
-                          requestAnimationFrame(() => {
-                            // input was just set; handleSend will read it.
-                            handleSend();
-                          });
+                          // Send the chip text directly. handleSend takes
+                          // an optional override so we don't have to wait
+                          // for the controlled input to round-trip
+                          // through state — the previous rAF approach
+                          // raced against React's batching and dropped
+                          // sends in production builds.
+                          void handleSend(prompt);
                         }}
                         disabled={isPending}
                         className="text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-200 hover:bg-emerald-500/10 hover:border-emerald-400/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
@@ -992,7 +999,7 @@ export function ChatWidget({
                   />
                 </div>
                 <button
-                  onClick={handleSend}
+                  onClick={() => void handleSend()}
                   disabled={!input.trim() || isPending}
                   className="p-2 text-emerald-400 hover:text-emerald-300 disabled:text-[hsl(var(--widget-muted))] disabled:opacity-50 transition-colors"
                   aria-label="Send message"
