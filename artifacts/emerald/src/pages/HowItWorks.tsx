@@ -41,6 +41,10 @@ export default function HowItWorks() {
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
         <FlowDiagram />
+        <p className="text-xs text-muted-foreground mt-3 leading-relaxed italic">
+          ↑ default flow — nothing leaves the device. Cloud fallback exists,
+          is capped at 3 calls, and labels itself.
+        </p>
       </div>
 
       <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-8">
@@ -197,17 +201,6 @@ function FlowDiagram() {
       <Arrow d="M 335 165 C 355 160, 370 145, 385 130" />
       <Arrow d="M 525 110 C 545 110, 555 110, 570 110" />
 
-      {/* Margin note */}
-      <text
-        x={20}
-        y={200}
-        fontSize="10"
-        fill="#737373"
-        style={{ fontStyle: "italic" }}
-      >
-        ↑ default flow — nothing leaves the device. cloud fallback exists,
-        is capped at 3 calls, and labels itself.
-      </text>
     </svg>
   );
 }
