@@ -15,13 +15,15 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 interface FeedbackRow {
   id: number;
+  kind: "feedback" | "suggestion";
   sessionId: string;
   personaSlug: string;
-  rating: number;
+  rating: number | null;
   userMessage: string;
-  botReply: string;
+  botReply: string | null;
   comment?: string | null;
-  responseSource: string;
+  context?: string | null;
+  responseSource: string | null;
   biasId?: string | null;
   biasLabel?: string | null;
   latencyMs?: number | null;
@@ -31,7 +33,8 @@ interface FeedbackRow {
 
 interface SummaryRow {
   personaSlug: string;
-  rating: number;
+  rating: number | null;
+  kind: "feedback" | "suggestion";
   n: number;
 }
 
@@ -55,6 +58,7 @@ export default function AdminFeedback() {
   const key = getQueryParam("key");
   const persona = getQueryParam("persona");
   const source = getQueryParam("source");
+  const kind = getQueryParam("kind");
   const sinceDays = getQueryParam("sinceDays") || "30";
 
   useEffect(() => {
@@ -67,6 +71,7 @@ export default function AdminFeedback() {
     const params = new URLSearchParams({ key, sinceDays });
     if (persona) params.set("persona", persona);
     if (source) params.set("source", source);
+    if (kind) params.set("kind", kind);
     fetch(`${base}api/admin/feedback?${params.toString()}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -82,23 +87,26 @@ export default function AdminFeedback() {
         setError(String(err?.message ?? err));
         setLoading(false);
       });
-  }, [key, persona, source, sinceDays]);
+  }, [key, persona, source, kind, sinceDays]);
 
   // Aggregate the summary table by persona so the header shows a
-  // compact "persona · 👍 N · 👎 M" line per persona sorted by total
-  // volume — the only view that's actually useful at a glance.
+  // compact "persona · ↑ N · ↓ M · ✎ S" line per persona sorted by
+  // total volume — the only view that's actually useful at a glance.
+  // Suggestions (kind="suggestion") have null rating and are
+  // counted in their own column so the up/down totals stay clean.
   const personaTotals = useMemo(() => {
-    if (!data) return [] as Array<{ slug: string; up: number; down: number }>;
-    const map = new Map<string, { up: number; down: number }>();
+    if (!data) return [] as Array<{ slug: string; up: number; down: number; sug: number }>;
+    const map = new Map<string, { up: number; down: number; sug: number }>();
     for (const row of data.summary) {
-      const cur = map.get(row.personaSlug) ?? { up: 0, down: 0 };
-      if (row.rating === 1) cur.up += row.n;
-      else cur.down += row.n;
+      const cur = map.get(row.personaSlug) ?? { up: 0, down: 0, sug: 0 };
+      if (row.kind === "suggestion") cur.sug += row.n;
+      else if (row.rating === 1) cur.up += row.n;
+      else if (row.rating === -1) cur.down += row.n;
       map.set(row.personaSlug, cur);
     }
     return Array.from(map.entries())
       .map(([slug, v]) => ({ slug, ...v }))
-      .sort((a, b) => b.up + b.down - (a.up + a.down));
+      .sort((a, b) => b.up + b.down + b.sug - (a.up + a.down + a.sug));
   }, [data]);
 
   if (loading) {
@@ -137,12 +145,14 @@ export default function AdminFeedback() {
               <span className="font-medium">{p.slug}</span>
               <span className="text-emerald-400">↑ {p.up}</span>
               <span className="text-rose-400">↓ {p.down}</span>
+              <span className="text-sky-400">✎ {p.sug}</span>
             </span>
           ))}
         </div>
         <FilterBar
           persona={persona}
           source={source}
+          kind={kind}
           sinceDays={sinceDays}
           accessKey={key}
         />
@@ -154,10 +164,11 @@ export default function AdminFeedback() {
             <tr>
               <th className="px-3 py-2 text-left">When</th>
               <th className="px-3 py-2 text-left">Persona</th>
+              <th className="px-3 py-2 text-left">Kind</th>
               <th className="px-3 py-2 text-left">Rating</th>
               <th className="px-3 py-2 text-left">Source</th>
               <th className="px-3 py-2 text-left">Question</th>
-              <th className="px-3 py-2 text-left">Reply</th>
+              <th className="px-3 py-2 text-left">Reply / Context</th>
               <th className="px-3 py-2 text-left">Bias</th>
             </tr>
           </thead>
@@ -167,7 +178,7 @@ export default function AdminFeedback() {
             ))}
             {data.rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                   No feedback rows match these filters.
                 </td>
               </tr>
@@ -187,6 +198,7 @@ export default function AdminFeedback() {
  */
 function FeedbackRowItem({ row }: { row: FeedbackRow }) {
   const [open, setOpen] = useState(false);
+  const isSuggestion = row.kind === "suggestion";
   const ratingClass = row.rating === 1 ? "text-emerald-400" : "text-rose-400";
   return (
     <>
@@ -199,15 +211,26 @@ function FeedbackRowItem({ row }: { row: FeedbackRow }) {
           {new Date(row.createdAt).toLocaleString()}
         </td>
         <td className="px-3 py-2 whitespace-nowrap font-medium">{row.personaSlug}</td>
-        <td className={`px-3 py-2 whitespace-nowrap font-semibold ${ratingClass}`}>
-          {row.rating === 1 ? "↑" : "↓"}
+        <td className="px-3 py-2 whitespace-nowrap">
+          {isSuggestion ? (
+            <span className="text-sky-400 font-mono text-[10px] uppercase">suggest</span>
+          ) : (
+            <span className="text-muted-foreground font-mono text-[10px] uppercase">rating</span>
+          )}
         </td>
-        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{row.responseSource}</td>
+        <td className={`px-3 py-2 whitespace-nowrap font-semibold ${ratingClass}`}>
+          {isSuggestion ? "—" : row.rating === 1 ? "↑" : "↓"}
+        </td>
+        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+          {row.responseSource ?? "—"}
+        </td>
         <td className="px-3 py-2 max-w-md">
           <div className="line-clamp-3">{row.userMessage}</div>
         </td>
         <td className="px-3 py-2 max-w-md">
-          <div className="line-clamp-3 text-muted-foreground">{row.botReply}</div>
+          <div className="line-clamp-3 text-muted-foreground">
+            {isSuggestion ? row.context ?? "—" : row.botReply ?? "—"}
+          </div>
         </td>
         <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
           {row.biasLabel ?? "—"}
@@ -218,14 +241,26 @@ function FeedbackRowItem({ row }: { row: FeedbackRow }) {
           className="border-t border-[hsl(var(--border))] bg-[hsl(var(--card))]"
           data-testid={`feedback-row-expanded-${row.id}`}
         >
-          <td colSpan={7} className="px-4 py-4">
+          <td colSpan={8} className="px-4 py-4">
             <div className="grid gap-3 max-w-4xl">
-              <Field label="Question">
+              <Field label={isSuggestion ? "Suggested question" : "Question"}>
                 <p className="text-sm whitespace-pre-wrap">{row.userMessage}</p>
               </Field>
-              <Field label="Reply">
-                <p className="text-sm whitespace-pre-wrap text-muted-foreground">{row.botReply}</p>
-              </Field>
+              {isSuggestion ? (
+                row.context && (
+                  <Field label="Visitor context">
+                    <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                      {row.context}
+                    </p>
+                  </Field>
+                )
+              ) : (
+                <Field label="Reply">
+                  <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                    {row.botReply}
+                  </p>
+                </Field>
+              )}
               {row.comment && (
                 <Field label="Visitor comment">
                   <p className="text-sm whitespace-pre-wrap text-rose-300">{row.comment}</p>
@@ -233,7 +268,7 @@ function FeedbackRowItem({ row }: { row: FeedbackRow }) {
               )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
                 <Meta label="Session" value={row.sessionId} />
-                <Meta label="Source" value={row.responseSource} />
+                <Meta label="Source" value={row.responseSource ?? "—"} />
                 <Meta label="Bias" value={row.biasLabel ?? row.biasId ?? "—"} />
                 <Meta
                   label="Cosine"
@@ -279,21 +314,27 @@ function Shell({ children }: { children: React.ReactNode }) {
 function FilterBar({
   persona,
   source,
+  kind,
   sinceDays,
   accessKey,
 }: {
   persona: string;
   source: string;
+  kind: string;
   sinceDays: string;
   accessKey: string;
 }) {
-  const apply = (next: Partial<{ persona: string; source: string; sinceDays: string }>) => {
+  const apply = (
+    next: Partial<{ persona: string; source: string; kind: string; sinceDays: string }>,
+  ) => {
     const params = new URLSearchParams({ key: accessKey });
     const p = next.persona ?? persona;
     const s = next.source ?? source;
+    const k = next.kind ?? kind;
     const d = next.sinceDays ?? sinceDays;
     if (p) params.set("persona", p);
     if (s) params.set("source", s);
+    if (k) params.set("kind", k);
     if (d) params.set("sinceDays", d);
     window.location.search = params.toString();
   };
@@ -314,6 +355,19 @@ function FilterBar({
           <option value="small-business">small-business</option>
           <option value="healthtech">healthtech</option>
           <option value="fintech">fintech</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2">
+        <span className="text-muted-foreground">Kind</span>
+        <select
+          value={kind}
+          onChange={(e) => apply({ kind: e.target.value })}
+          className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded px-2 py-1"
+          data-testid="filter-kind"
+        >
+          <option value="">All</option>
+          <option value="feedback">feedback</option>
+          <option value="suggestion">suggestion</option>
         </select>
       </label>
       <label className="flex items-center gap-2">

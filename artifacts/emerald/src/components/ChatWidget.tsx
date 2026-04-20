@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu } from 'lucide-react';
+import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
 import { ChatMessage, type MessageProps } from './ChatMessage';
 import { SecurityPanel } from './SecurityPanel';
 import { KnowledgePanel } from './KnowledgePanel';
+import { QaBankPanel } from './QaBankPanel';
 import { OpenClawPanel } from './OpenClawPanel';
 import { PipeStatusPanel } from './PipeStatusPanel';
 import { BiasToggle } from './BiasToggle';
@@ -150,6 +151,7 @@ export function ChatWidget({
   const [input, setInput] = useState('');
   const [showSecurityPanel, setShowSecurityPanel] = useState(false);
   const [showKnowledgePanel, setShowKnowledgePanel] = useState(false);
+  const [showQaBankPanel, setShowQaBankPanel] = useState(false);
   const [showPipePanel, setShowPipePanel] = useState(false);
   const [showOpenClawPanel, setShowOpenClawPanel] = useState(false);
   const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
@@ -752,6 +754,13 @@ export function ChatWidget({
                       <Database className="w-3.5 h-3.5 mr-2" />
                       Manage knowledge base
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setShowQaBankPanel(true)}
+                      data-testid="menuitem-qa-bank"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 mr-2" />
+                      Browse Q&amp;A bank
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowPipePanel(true)}>
                       <Cable className="w-3.5 h-3.5 mr-2" />
                       Pipe status
@@ -1059,6 +1068,14 @@ export function ChatWidget({
         isOpen={showKnowledgePanel}
         onClose={() => setShowKnowledgePanel(false)}
         personaSlug={personaSlug}
+      />
+
+      <QaBankPanel
+        isOpen={showQaBankPanel}
+        onClose={() => setShowQaBankPanel(false)}
+        personaSlug={personaSlug}
+        sessionId={sessionId}
+        onAskQuestion={(q) => { void handleSend(q); }}
       />
 
       <PipeStatusPanel
