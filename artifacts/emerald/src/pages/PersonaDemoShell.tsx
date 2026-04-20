@@ -129,6 +129,10 @@ function PersonaDemoShellInner({ persona }: { persona: Persona }) {
           routeSlug={persona.slug}
           personaSlug={persona.slug}
           personaBrand={scenario.shell.brand}
+          personaSystemPrompt={scenario.systemPrompt}
+          personaExampleTopics={scenario.shell.articleSections
+            .slice(0, 3)
+            .map((s) => s.heading)}
         />
       </div>
     </PipeProvider>

@@ -607,6 +607,26 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       setStatus("unsupported");
       return;
     }
+    // iOS / iPadOS Safari OOM-crashes the tab when the multi-hundred-MB
+    // WebGPU model loads (the WebKit "A problem repeatedly occurred"
+    // signature), even on iPadOS where WebGPU is partially available.
+    // Production users were getting kicked back to the homepage
+    // mid-chat. Force cloud-only on those platforms — the cloud path
+    // still answers normally without crashing the browser.
+    //
+    // Detection: Safari user agent + (iOS OR iPadOS pretending to be
+    // macOS — modern iPads report "Macintosh" with `maxTouchPoints>1`).
+    const ua = navigator.userAgent;
+    const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS/.test(ua);
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isIPadOSPretendingMac =
+      /Macintosh/.test(ua) &&
+      typeof navigator.maxTouchPoints === "number" &&
+      navigator.maxTouchPoints > 1;
+    if (isSafari && (isIOS || isIPadOSPretendingMac)) {
+      setStatus("unsupported");
+      return;
+    }
     if (workerRef.current) return; // already started
 
     try {

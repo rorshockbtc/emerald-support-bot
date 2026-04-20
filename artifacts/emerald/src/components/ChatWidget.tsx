@@ -29,6 +29,37 @@ function uuidv4() {
 }
 
 /**
+ * Structured "this is a lightweight demo persona" fallback. Replaces
+ * the prior "we can't help, refresh the session" dead-end so visitors
+ * understand WHY the bot can't answer right now and what they CAN ask
+ * next. Per the production-feedback note, every "I don't know" should
+ * convert into a clear redirect rather than a no-recourse error.
+ */
+function buildLightweightDemoFallback({
+  personaBrand,
+  personaExampleTopics,
+  reason,
+}: {
+  personaBrand?: string;
+  personaExampleTopics?: string[];
+  reason: string;
+}): string {
+  const brandLine = personaBrand
+    ? `I'm a lightweight demo persona for ${personaBrand}, built on the Greater framework`
+    : "I'm a lightweight demo persona built on the Greater framework";
+  const topicsBlock =
+    personaExampleTopics && personaExampleTopics.length > 0
+      ? `\n\nTry asking me about:\n${personaExampleTopics
+          .map((t) => `• ${t}`)
+          .join('\n')}`
+      : '';
+  return [
+    `${reason} ${brandLine} — in a real production deployment, the company would build out a comprehensive knowledge base so I could answer questions like yours accurately.`,
+    `${topicsBlock ? topicsBlock + '\n\n' : '\n\n'}You can also try again in a new session, or refresh to reload the local model. Curious about how Greater works? Visit the homepage.`,
+  ].join('');
+}
+
+/**
  * Per-persona chrome for the chat widget. Every demo route passes its
  * own copy so the bot greets the visitor in-character (Cornerstone,
  * Vellum, Heritage, Pinecrest, MutualHealth) instead of always opening
@@ -70,6 +101,26 @@ export interface ChatWidgetProps {
    * "Vellum"). Used in the ticket preview's back-link and tags.
    */
   personaBrand?: string;
+  /**
+   * Self-contained system prompt for this persona. When provided AND no
+   * curated Pipe is mounted, this overrides the LLMProvider's default
+   * "You are Greater, support assistant for Blockstream..." prompt.
+   * Without this, the model hallucinates a Blockstream/Bitcoin identity
+   * on non-FinTech personas (the "I'm Emerald, Blockstream's support
+   * assistant" leak on MutualHealth, etc.).
+   *
+   * Sourced from `data/personas.ts` → `scenario.systemPrompt`. The
+   * FinTech persona supplies its own Blockstream-flavoured prompt so
+   * the live demo keeps its grounded behaviour.
+   */
+  personaSystemPrompt?: string;
+  /**
+   * 2–3 example topics this persona handles well. Used in the
+   * structured "lightweight demo" fallback message when the bot
+   * cannot answer (cloud rate-limited + local failed/loading) so the
+   * dead-end becomes a redirect to questions that DO work.
+   */
+  personaExampleTopics?: string[];
 }
 
 export function ChatWidget({
@@ -80,6 +131,8 @@ export function ChatWidget({
   routeSlug,
   personaSlug,
   personaBrand,
+  personaSystemPrompt,
+  personaExampleTopics,
 }: ChatWidgetProps = {}) {
   const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -291,6 +344,9 @@ export function ChatWidget({
       // hint and the bias label so the response shifts visibly.
       let askOptions: AskOptions | undefined;
       if (pipe.pipe) {
+        // A curated Pipe is mounted — its system prompt wins because it
+        // already knows about the persona AND any bias-specific
+        // overrides. Pipe takes precedence over personaSystemPrompt.
         askOptions = {
           systemPrompt: pipe.effectivePromptHint,
           // Always include 'neutral' so common-ground material remains
@@ -306,10 +362,27 @@ export function ChatWidget({
           biasLabel: activeBiasOption?.label,
         };
       } else if (pipe.effectivePromptHint) {
+        // No Pipe, but the audience-bias toggle has a prompt hint.
+        // Compose: persona identity FIRST (so the bot knows whose
+        // brand it speaks for), audience-hint AFTER (so tone shifts
+        // for the active bias). Without the persona prefix the model
+        // falls back to LLMProvider's Blockstream/Bitcoin default and
+        // hallucinates "I'm Emerald, Blockstream's support assistant"
+        // on every persona.
         askOptions = {
-          systemPrompt: pipe.effectivePromptHint,
+          systemPrompt: personaSystemPrompt
+            ? `${personaSystemPrompt}\n\n${pipe.effectivePromptHint}`
+            : pipe.effectivePromptHint,
           biasId: pipe.activeBiasId,
           biasLabel: activeBiasOption?.label,
+        };
+      } else if (personaSystemPrompt) {
+        // No Pipe, no audience-bias hint — just the persona's identity.
+        // Critical: without this, askOptions stays undefined and
+        // LLMProvider falls back to its "You are Greater, support
+        // assistant for Blockstream..." default → persona leak.
+        askOptions = {
+          systemPrompt: personaSystemPrompt,
         };
       }
       const answer = await llm.ask(history, userText, askOptions);
@@ -397,8 +470,12 @@ export function ChatWidget({
         {
           id: uuidv4(),
           role: 'bot',
-          content:
-            'In-browser inference failed and the cloud fallback is rate-limited for this session. Please try again in a new session, or refresh to reload the local model.',
+          content: buildLightweightDemoFallback({
+            personaBrand,
+            personaExampleTopics,
+            reason:
+              'The in-browser model hit an error and the cloud fallback is rate-limited for this session.',
+          }),
           timestamp: new Date(),
           responseSource: 'local',
           localOnly: true,
@@ -419,8 +496,12 @@ export function ChatWidget({
       {
         id: uuidv4(),
         role: 'bot',
-        content:
-          'Cloud fallback is rate-limited for this session and the in-browser model is still loading. Please try again once the model finishes downloading.',
+        content: buildLightweightDemoFallback({
+          personaBrand,
+          personaExampleTopics,
+          reason:
+            'The cloud fallback is rate-limited for this session and the in-browser model is still loading.',
+        }),
         timestamp: new Date(),
         responseSource: 'local',
         localOnly: true,

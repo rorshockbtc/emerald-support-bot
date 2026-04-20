@@ -275,6 +275,12 @@ export default function Home() {
         routeSlug="blockstream"
         personaSlug="fintech"
         personaBrand="Blockstream"
+        personaSystemPrompt={scenario?.systemPrompt}
+        personaExampleTopics={[
+          'Jade hardware wallet recovery',
+          'Green Wallet fees and self-custody',
+          'Suspected unauthorised login on a Blockstream wallet',
+        ]}
       />
     </div>
     </PipeProvider>
