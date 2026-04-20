@@ -243,10 +243,18 @@ export function cosine(a: number[], b: number[]): number {
   return denom === 0 ? 0 : dot / denom;
 }
 
+/**
+ * Sentinel `persona_slug` for cross-persona content (user ingestions
+ * from the home page, the Greater meta-bot corpus, and any chunk that
+ * should be retrievable regardless of which persona is active).
+ * Always eligible when {@link topK} is given a `personaScope`.
+ */
+export const GLOBAL_PERSONA_SLUG = "__global__";
+
 export async function topK(
   queryVector: number[],
   k: number,
-  options: { biasFilter?: Bias[] } = {},
+  options: { biasFilter?: Bias[]; personaScope?: string } = {},
 ): Promise<RetrievedChunk[]> {
   const db = await getDb();
   const [docs, embs] = await Promise.all([
@@ -262,8 +270,56 @@ export async function topK(
       const tag: Bias = doc.bias ?? "neutral";
       if (!options.biasFilter.includes(tag)) continue;
     }
+    // Persona scoping: the active persona's chunks PLUS global chunks
+    // are eligible. Untagged legacy chunks (persona_slug undefined)
+    // are also accepted as a transitional safety net for the brief
+    // window after upgrade and before `migratePersonaSlugs` runs.
+    if (options.personaScope) {
+      const slug = doc.persona_slug;
+      const ok =
+        slug === undefined ||
+        slug === GLOBAL_PERSONA_SLUG ||
+        slug === options.personaScope;
+      if (!ok) continue;
+    }
     scored.push({ ...doc, score: cosine(queryVector, row.vector) });
   }
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, k);
+}
+
+/**
+ * One-time backfill that stamps `persona_slug` on every chunk written
+ * before the persona-scope migration. Inference rules:
+ *   - `seed-blockstream`           → "fintech"
+ *   - `bitcoin-bundle`             → "fintech"
+ *   - `seed-bundle:<slug>`         → "<slug>"
+ *   - everything else (user-ingested URLs/crawls/feeds, NOSTR, files)
+ *                                  → "__global__"
+ *
+ * Idempotent: skips chunks that already have a `persona_slug`. Safe
+ * to call on every boot; the no-op path is a single `getAll` scan.
+ * The caller is expected to gate this behind a meta flag so the scan
+ * itself is also skipped after the first successful run.
+ */
+export async function migratePersonaSlugs(): Promise<number> {
+  const db = await getDb();
+  const docs = await db.getAll("documents");
+  let migrated = 0;
+  const tx = db.transaction("documents", "readwrite");
+  for (const doc of docs) {
+    if (doc.persona_slug) continue;
+    let slug: string;
+    if (doc.job_id === "seed-blockstream" || doc.job_id === "bitcoin-bundle") {
+      slug = "fintech";
+    } else if (doc.job_id.startsWith("seed-bundle:")) {
+      slug = doc.job_id.slice("seed-bundle:".length);
+    } else {
+      slug = GLOBAL_PERSONA_SLUG;
+    }
+    await tx.objectStore("documents").put({ ...doc, persona_slug: slug });
+    migrated += 1;
+  }
+  await tx.done;
+  return migrated;
 }

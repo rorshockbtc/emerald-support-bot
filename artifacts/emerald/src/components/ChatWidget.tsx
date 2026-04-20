@@ -1058,6 +1058,7 @@ export function ChatWidget({
       <KnowledgePanel
         isOpen={showKnowledgePanel}
         onClose={() => setShowKnowledgePanel(false)}
+        personaSlug={personaSlug}
       />
 
       <PipeStatusPanel

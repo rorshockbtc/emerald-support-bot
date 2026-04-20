@@ -36,7 +36,7 @@ import { SimplePool } from "nostr-tools/pool";
 import { nip04, nip19 } from "nostr-tools";
 import type { Event, Filter } from "nostr-tools";
 import { chunkText } from "./chunker";
-import { putChunkWithVector } from "./vectorStore";
+import { GLOBAL_PERSONA_SLUG, putChunkWithVector } from "./vectorStore";
 import type { EmbedFn } from "./ingest";
 
 function bytesToHex(bytes: Uint8Array): string {
@@ -65,6 +65,12 @@ export interface NostrSyncOptions {
   nsecHex?: string;
   /** Max events to pull per subscription (safety cap). */
   limit?: number;
+  /**
+   * Persona slug to stamp on every produced chunk so retrieval can
+   * scope by persona (Task #26). Defaults to `__global__` so NOSTR
+   * notes added from the home page stay eligible across all personas.
+   */
+  personaSlug?: string;
   embed: EmbedFn;
   onProgress?: (msg: string, done: number, total: number) => void;
 }
@@ -154,6 +160,7 @@ export async function syncNostr(
     decryptPrivate = false,
     nsecHex: rawNsec,
     limit = 200,
+    personaSlug = GLOBAL_PERSONA_SLUG,
     embed,
     onProgress,
   } = options;
@@ -267,6 +274,7 @@ export async function syncNostr(
             chunk_index: chunk.chunk_index,
             text: chunk.text,
             bias: "neutral",
+            persona_slug: personaSlug,
             indexed_at: Date.now(),
           },
           vec,

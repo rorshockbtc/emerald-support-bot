@@ -11,6 +11,15 @@ export type SeedChunk = Pick<
 >;
 
 /**
+ * Persona slug stamped on every {@link SEED_CORPUS} chunk at install
+ * time. The seed is Blockstream/Bitcoin support content, so it
+ * belongs to the FinTech persona only — exposing it on the Faith or
+ * Schools demos was the cross-persona contamination bug Task #26
+ * fixes.
+ */
+export const SEED_CORPUS_PERSONA = "fintech";
+
+/**
  * Hand-curated seed corpus for the Blockstream/FinTech demo so the
  * end-to-end RAG pipeline is testable before any external ingestion
  * happens. ~20 chunks covering Bitcoin basics, hardware-wallet hygiene,

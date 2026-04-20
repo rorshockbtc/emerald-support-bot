@@ -81,6 +81,16 @@ export interface KbChunk {
   /** Optional bias tag; absent on legacy chunks (treated as 'neutral'). */
   bias?: Bias;
 
+  /**
+   * Persona slug this chunk belongs to. Use the literal `__global__`
+   * for cross-persona content (the meta-bot corpus, user ingestions
+   * from the home page, etc.). Absent on legacy chunks written before
+   * the persona-scope migration; the migration backfills it from
+   * `job_id`. Retrieval filters by this so the FinTech corpus does
+   * not leak into Cornerstone Church results, etc.
+   */
+  persona_slug?: string;
+
   /** Unix ms when the chunk was indexed. */
   indexed_at?: number;
 }

@@ -40,13 +40,14 @@ import {
   LLM_MODEL_ID,
   LLM_QUANTIZATION_LABEL,
 } from "./config";
-import { SEED_CORPUS } from "./seedCorpus";
+import { SEED_CORPUS, SEED_CORPUS_PERSONA } from "./seedCorpus";
 import {
   clearAll,
   countDocumentsByJob,
   deleteByJob,
   getCorpusMeta,
   getMetaFlag,
+  migratePersonaSlugs,
   putChunkWithVector,
   setCorpusMeta,
   setMetaFlag,
@@ -92,6 +93,13 @@ interface SeedBundleConfig {
   version: string;
   /** Used for the Knowledge panel's job grouping. */
   jobLabel: string;
+  /**
+   * Persona slug stamped on every chunk in this bundle, so retrieval
+   * scoped to a persona only sees its own bundle. Usually equal to
+   * the bundle slug, but the bitcoin bundle belongs to the FinTech
+   * persona (since the FinTech route is the Blockstream demo).
+   */
+  personaSlug: string;
 }
 
 const SEED_BUNDLES: Record<string, SeedBundleConfig> = {
@@ -99,33 +107,43 @@ const SEED_BUNDLES: Record<string, SeedBundleConfig> = {
     slug: "bitcoin",
     version: "v1",
     jobLabel: "Bitcoin knowledge bundle",
+    personaSlug: "fintech",
   },
   startups: {
     slug: "startups",
     version: "v1",
     jobLabel: "Startups demo seed (Vellum)",
+    personaSlug: "startups",
   },
   faith: {
     slug: "faith",
     version: "v1",
     jobLabel: "Faith demo seed (Cornerstone)",
+    personaSlug: "faith",
   },
   schools: {
     slug: "schools",
     version: "v1",
     jobLabel: "Schools demo seed (Heritage Classical)",
+    personaSlug: "schools",
   },
   "small-business": {
     slug: "small-business",
     version: "v1",
     jobLabel: "Small Business demo seed (Pinecrest Realty)",
+    personaSlug: "small-business",
   },
   healthtech: {
     slug: "healthtech",
     version: "v1",
     jobLabel: "HealthTech demo seed (MutualHealth)",
+    personaSlug: "healthtech",
   },
 };
+
+/** Meta-flag key marking that the persona-scope backfill has run. */
+const PERSONA_MIGRATION_FLAG = "persona-scope-migration";
+const PERSONA_MIGRATION_VERSION = "v1";
 
 function bundleFlagKey(slug: string) {
   return `seed-bundle:${slug}`;
@@ -482,6 +500,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           chunk_index: chunk.chunk_index,
           text: chunk.text,
           bias: chunk.bias ?? "neutral",
+          persona_slug: SEED_CORPUS_PERSONA,
           indexed_at: indexedAt,
         },
         vec,
@@ -571,6 +590,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
               chunk_index: ch.chunk_index,
               text: ch.text,
               bias,
+              persona_slug: cfg.personaSlug,
               indexed_at: installedAt,
             },
             vec,
@@ -676,6 +696,23 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             // the LLM is still downloading. Embedding 20 chunks is fast.
             // Then flush any seed bundles requested before readiness.
             bundleLoadChainRef.current = bundleLoadChainRef.current
+              // Backfill persona_slug on chunks written before the
+              // persona-scope migration (Task #26). Idempotent + gated
+              // by a meta flag so the IndexedDB scan only runs once.
+              .then(async () => {
+                const flag = await getMetaFlag(PERSONA_MIGRATION_FLAG);
+                if (flag?.value === PERSONA_MIGRATION_VERSION) return;
+                const migrated = await migratePersonaSlugs();
+                await setMetaFlag(
+                  PERSONA_MIGRATION_FLAG,
+                  PERSONA_MIGRATION_VERSION,
+                );
+                if (migrated > 0) {
+                  console.info(
+                    `[LLMProvider] Persona-scope migration stamped ${migrated} legacy chunks.`,
+                  );
+                }
+              })
               .then(() => ensureSeedCorpus())
               .then(async () => {
                 const queued = Array.from(queuedBundleSlugsRef.current);
@@ -891,6 +928,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           });
           retrieved = await topK(queryVec, 5, {
             biasFilter: options?.biasFilter,
+            personaScope: options?.personaSlug,
           });
         } catch {
           // Retrieval failure should NOT block the OpenClaw call —
@@ -1141,6 +1179,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // common ground that holds across forks.
       const retrieved = await topK(queryVec, 5, {
         biasFilter: options?.biasFilter,
+        personaScope: options?.personaSlug,
       });
       const context = formatRetrievedForPrompt(retrieved);
 

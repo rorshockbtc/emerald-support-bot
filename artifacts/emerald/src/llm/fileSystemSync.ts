@@ -32,7 +32,7 @@
  */
 
 import { chunkText } from "./chunker";
-import { putChunkWithVector } from "./vectorStore";
+import { GLOBAL_PERSONA_SLUG, putChunkWithVector } from "./vectorStore";
 import type { EmbedFn } from "./ingest";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -103,6 +103,12 @@ export interface FileSystemSyncOptions {
   onProgress?: (fileName: string, done: number, total: number) => void;
   /** Bias tag for all chunks from this directory. Default: "neutral". */
   bias?: "neutral" | "core" | "knots";
+  /**
+   * Persona slug to stamp on every produced chunk so retrieval can
+   * scope by persona (Task #26). Defaults to `__global__` so files
+   * added from the home page stay eligible across all personas.
+   */
+  personaSlug?: string;
 }
 
 export interface FileSystemSyncResult {
@@ -155,7 +161,12 @@ export async function syncLocalFiles(
   }).showDirectoryPicker({ mode: "read" });
 
   const dirName = dirHandle.name;
-  const { embed, onProgress, bias = "neutral" } = options;
+  const {
+    embed,
+    onProgress,
+    bias = "neutral",
+    personaSlug = GLOBAL_PERSONA_SLUG,
+  } = options;
 
   const fileHandles = await walkDirectory(dirHandle);
   const total = fileHandles.length;
@@ -212,6 +223,7 @@ export async function syncLocalFiles(
           chunk_index: chunk.chunk_index,
           text: chunk.text,
           bias,
+          persona_slug: personaSlug,
           indexed_at: Date.now(),
         },
         vec,

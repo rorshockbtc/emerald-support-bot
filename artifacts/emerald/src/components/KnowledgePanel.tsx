@@ -90,9 +90,17 @@ type Tab = "index" | "crawl" | "nostr" | "local-files";
 export function KnowledgePanel({
   isOpen,
   onClose,
+  personaSlug,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * Persona slug of the host route. Stamped on every chunk written by
+   * the panel so user-ingested content stays scoped to the persona it
+   * was added under (Task #26). Omitted on the home page → chunks are
+   * stamped `__global__` and remain eligible across all personas.
+   */
+  personaSlug?: string;
 }) {
   const [tab, setTab] = useState<Tab>("index");
   const [sources, setSources] = useState<IndexedSource[]>([]);
@@ -152,10 +160,21 @@ export function KnowledgePanel({
           ))}
         </div>
 
-        {tab === "index" && <IndexTab onIndexed={refreshSources} />}
-        {tab === "crawl" && <CrawlTab onIndexed={refreshSources} />}
-        {tab === "nostr" && <NostrTab onIndexed={refreshSources} />}
-        {tab === "local-files" && <LocalFilesTab onIndexed={refreshSources} />}
+        {tab === "index" && (
+          <IndexTab onIndexed={refreshSources} personaSlug={personaSlug} />
+        )}
+        {tab === "crawl" && (
+          <CrawlTab onIndexed={refreshSources} personaSlug={personaSlug} />
+        )}
+        {tab === "nostr" && (
+          <NostrTab onIndexed={refreshSources} personaSlug={personaSlug} />
+        )}
+        {tab === "local-files" && (
+          <LocalFilesTab
+            onIndexed={refreshSources}
+            personaSlug={personaSlug}
+          />
+        )}
 
         <div className="border-t border-[hsl(var(--widget-border))] pt-3">
           <div className="flex items-baseline justify-between mb-2">
@@ -184,7 +203,13 @@ export function KnowledgePanel({
   );
 }
 
-function IndexTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
+function IndexTab({
+  onIndexed,
+  personaSlug,
+}: {
+  onIndexed: () => Promise<void>;
+  personaSlug?: string;
+}) {
   const llm = useLLM();
   const { toast } = useToast();
   const [url, setUrl] = useState("");
@@ -211,6 +236,7 @@ function IndexTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
         url: trimmed,
         mode,
         bias: "neutral",
+        personaSlug,
         onProgress: (p) => setProgress(p),
       });
       toast({
@@ -290,7 +316,13 @@ function IndexTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
  * product spec — we don't want a visitor to think this is a Googlebot
  * replacement.
  */
-function CrawlTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
+function CrawlTab({
+  onIndexed,
+  personaSlug,
+}: {
+  onIndexed: () => Promise<void>;
+  personaSlug?: string;
+}) {
   const llm = useLLM();
   const { toast } = useToast();
   const [root, setRoot] = useState("");
@@ -324,6 +356,7 @@ function CrawlTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
         maxDepth: clamp(maxDepth, 0, 4),
         delayMs: Math.round(clamp(delaySec, 0, 10) * 1000),
         bias: "neutral",
+        personaSlug,
         onProgress: (p) => setProgress(p),
         signal: ctl.signal,
       });
@@ -609,7 +642,13 @@ function newJobId(): string {
   return `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function NostrTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
+function NostrTab({
+  onIndexed,
+  personaSlug,
+}: {
+  onIndexed: () => Promise<void>;
+  personaSlug?: string;
+}) {
   const llm = useLLM();
   const { toast } = useToast();
   const [relay, setRelay] = useState("wss://relay.damus.io");
@@ -643,6 +682,7 @@ function NostrTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
         targetPubkey: pubkey.trim() || undefined,
         decryptPrivate: decrypt,
         nsecHex: nsec.trim() || undefined,
+        personaSlug,
         embed: llm.embed,
         onProgress: (msg, d, t) => {
           setStatusMsg(msg);
@@ -781,7 +821,13 @@ function NostrTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
   );
 }
 
-function LocalFilesTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
+function LocalFilesTab({
+  onIndexed,
+  personaSlug,
+}: {
+  onIndexed: () => Promise<void>;
+  personaSlug?: string;
+}) {
   const llm = useLLM();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -806,6 +852,7 @@ function LocalFilesTab({ onIndexed }: { onIndexed: () => Promise<void> }) {
     try {
       const result = await syncLocalFiles(newJobId(), {
         embed: llm.embed,
+        personaSlug,
         onProgress: (fileName, d, t) => {
           setStatusMsg(fileName);
           setDone(d);

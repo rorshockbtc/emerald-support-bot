@@ -4,7 +4,7 @@ import {
   ingestSitemap,
 } from "@workspace/api-client-react";
 import { chunkText } from "./chunker";
-import { putChunkWithVector } from "./vectorStore";
+import { GLOBAL_PERSONA_SLUG, putChunkWithVector } from "./vectorStore";
 import type { Bias, IngestProgress, JobKind, KbChunk } from "./types";
 
 /**
@@ -39,6 +39,13 @@ export interface IngestOptions {
   url: string;
   mode: IngestMode;
   bias?: Bias;
+  /**
+   * Persona slug to stamp on every produced chunk (so retrieval can
+   * scope by persona later). Omit to fall back to `__global__` —
+   * appropriate for ingestions started outside any persona route
+   * (e.g. the home-page Greater meta-bot).
+   */
+  personaSlug?: string;
   /** Called between each step so the UI can show a live counter. */
   onProgress?: (p: IngestProgress) => void;
   /** Cap on pages indexed when mode is sitemap or rss. */
@@ -72,6 +79,7 @@ interface JobMeta {
 async function indexSinglePage(
   pageUrl: string,
   bias: Bias,
+  personaSlug: string,
   job: JobMeta,
   embed: EmbedFn,
   emit: (n: number) => void,
@@ -96,6 +104,7 @@ async function indexSinglePage(
         chunk_index: ch.chunk_index,
         text: ch.text,
         bias,
+        persona_slug: personaSlug,
         indexed_at: indexedAt,
       } satisfies KbChunk,
       vec,
@@ -134,6 +143,8 @@ export interface CrawlOptions {
   maxDepth?: number;
   delayMs?: number;
   bias?: Bias;
+  /** See {@link IngestOptions.personaSlug}. */
+  personaSlug?: string;
   onProgress?: (p: IngestProgress) => void;
   /** AbortSignal for the Cancel button in the Knowledge panel. */
   signal?: AbortSignal;
@@ -224,6 +235,7 @@ export async function ingestCrawl(
   options: CrawlOptions,
 ): Promise<IngestResult> {
   const bias: Bias = options.bias ?? "neutral";
+  const personaSlug = options.personaSlug ?? GLOBAL_PERSONA_SLUG;
   const onProgress = options.onProgress ?? (() => undefined);
   const job: JobMeta = {
     job_id: newJobId(),
@@ -333,6 +345,7 @@ export async function ingestCrawl(
                 chunk_index: ch.chunk_index,
                 text: ch.text,
                 bias,
+                persona_slug: personaSlug,
                 indexed_at: indexedAt,
               } satisfies KbChunk,
               vec,
@@ -397,6 +410,7 @@ export async function ingestUrl(
   options: IngestOptions,
 ): Promise<IngestResult> {
   const bias: Bias = options.bias ?? "neutral";
+  const personaSlug = options.personaSlug ?? GLOBAL_PERSONA_SLUG;
   const onProgress = options.onProgress ?? (() => undefined);
   const maxPages = options.maxPages ?? 200;
 
@@ -440,7 +454,7 @@ export async function ingestUrl(
       progress.stage = "extracting";
       onProgress({ ...progress });
       try {
-        await indexSinglePage(pageUrl, bias, job, embed, (n) => {
+        await indexSinglePage(pageUrl, bias, personaSlug, job, embed, (n) => {
           totalChunks += n;
           progress.done_chunks = totalChunks;
           progress.stage = "embedding";
