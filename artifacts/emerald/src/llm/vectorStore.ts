@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { Bias, IndexedSource, KbChunk, RetrievedChunk } from "./types";
+import { invalidateLexicalIndex } from "./lexicalIndex";
 
 /**
  * IndexedDB-backed vector store for the Greater RAG pipeline.
@@ -137,6 +138,7 @@ export async function clearAll(): Promise<void> {
   await db.clear("documents");
   await db.clear("embeddings");
   await db.clear("meta");
+  invalidateLexicalIndex();
 }
 
 export async function putChunkWithVector(
@@ -150,6 +152,20 @@ export async function putChunkWithVector(
     .objectStore("embeddings")
     .put({ document_id: chunk.id, vector });
   await tx.done;
+  // Any write to the chunk store invalidates the BM25-lite lexical
+  // index. Rebuild is lazy on next query (see lexicalIndex.ts).
+  invalidateLexicalIndex();
+}
+
+/**
+ * Return every chunk row in the store. Used by {@link lexicalIndex}
+ * to rebuild the BM25 inverted index. Kept as a separate export
+ * (rather than reusing {@link listSources}) so the lexical layer
+ * doesn't pay the source-aggregation cost on every rebuild.
+ */
+export async function getAllDocuments(): Promise<KbChunk[]> {
+  const db = await getDb();
+  return db.getAll("documents");
 }
 
 export async function countDocuments(): Promise<number> {
@@ -186,6 +202,7 @@ export async function deleteByJob(jobId: string): Promise<number> {
     await tx.objectStore("embeddings").delete(doc.id);
   }
   await tx.done;
+  invalidateLexicalIndex();
   return docs.length;
 }
 

@@ -18,7 +18,7 @@ export default function DemoHolding() {
   // instead of the holding screen. Today that's only FinTech →
   // /demo/blockstream; future live personas should be added here.
   const liveDemoRoutes: Record<string, string> = {
-    fintech: "/demo/blockstream",
+    fintech: "/demo/fintech",
   };
   const liveTarget = persona ? liveDemoRoutes[persona.slug] : undefined;
 

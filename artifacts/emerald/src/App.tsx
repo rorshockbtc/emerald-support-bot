@@ -10,6 +10,8 @@ import OpenClaw from "@/pages/OpenClaw";
 import PersonaPage from "@/pages/PersonaPage";
 import DemoHolding from "@/pages/DemoHolding";
 import BlockstreamDemo from "@/pages/BlockstreamDemo";
+import BitcoinDemo from "@/pages/BitcoinDemo";
+import FintechChooser from "@/pages/FintechChooser";
 import PersonaDemoShell from "@/pages/PersonaDemoShell";
 import TicketPreview from "@/pages/TicketPreview";
 import HowItWorks from "@/pages/HowItWorks";
@@ -40,6 +42,8 @@ function Router() {
           Greater Layout chrome to keep the Blockstream-branded support
           page authentic. Other personas use the generic shell below. */}
       <Route path="/demo/blockstream" component={BlockstreamDemo} />
+      <Route path="/demo/bitcoin" component={BitcoinDemo} />
+      <Route path="/demo/fintech" component={FintechChooser} />
 
       {/* Live demos for the five non-FinTech personas. Each renders a
           mock host page configured by the persona's `scenario.shell`,

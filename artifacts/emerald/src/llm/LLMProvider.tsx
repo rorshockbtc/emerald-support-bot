@@ -54,6 +54,7 @@ import {
   topK,
   cosine,
 } from "./vectorStore";
+import { lexicalTopK, fuseRetrievals } from "./lexicalIndex";
 
 const SEED_CORPUS_VERSION = "v2-seed-blockstream";
 
@@ -1365,10 +1366,25 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // restrict scoring to chunks tagged with one of those biases.
       // Untagged ('neutral') chunks are always eligible — they are the
       // common ground that holds across forks.
-      const retrieved = await topK(queryVec, 5, {
+      //
+      // Hybrid retrieval: run semantic (cosine over embeddings) and
+      // BM25-lite lexical retrieval in parallel, then fuse the two
+      // top-K lists. The lexical leg is a fallback for queries the
+      // embedder fumbles — keyword-rich paraphrases like "what coding
+      // language do I need?" or "is there a way to suggest things for
+      // the knowledge base?" that score below the WEAK_CONTEXT gate
+      // on semantic alone but match strong rare terms in the corpus.
+      // See artifacts/emerald/src/llm/lexicalIndex.ts for the BM25
+      // implementation, normalization curve, and fusion math.
+      const retrievalOptions = {
         biasFilter: options?.biasFilter,
         personaScope: options?.personaSlug,
-      });
+      };
+      const [semantic, lexical] = await Promise.all([
+        topK(queryVec, 5, retrievalOptions),
+        lexicalTopK(userMessage, 5, retrievalOptions),
+      ]);
+      const retrieved = fuseRetrievals(semantic, lexical, 5);
 
       // Tiered grounding. The earlier binary refuse-or-answer gate at
       // 0.35 cosine was too aggressive: legitimate paraphrases of

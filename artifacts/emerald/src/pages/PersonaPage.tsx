@@ -23,7 +23,7 @@ export default function PersonaPage() {
 
   const isLive = persona.demoStatus === "live";
   const demoHref =
-    persona.slug === "fintech" ? "/demo/blockstream" : `/demo/${persona.slug}`;
+    persona.slug === "fintech" ? "/demo/fintech" : `/demo/${persona.slug}`;
 
   return (
     <article className="pb-4">

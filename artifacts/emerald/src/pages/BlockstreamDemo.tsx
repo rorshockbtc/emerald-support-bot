@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
+import { Link } from 'wouter';
 import type { LucideIcon } from 'lucide-react';
-import { ShieldAlert, Lock, KeyRound, Smartphone, AlertTriangle, ChevronRight, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, Lock, KeyRound, Smartphone, AlertTriangle, ChevronRight, ExternalLink, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ChatWidget } from '@/components/ChatWidget';
 import { ContactCTASection } from '@/components/ContactCTASection';
 import { SkipToContent } from '@/components/SkipToContent';
@@ -53,6 +54,27 @@ export default function Home() {
     <PipeProvider persona="fintech" personaDefaults={fintech?.defaultBias}>
     <div className="min-h-screen bg-white text-foreground flex flex-col">
       <SkipToContent />
+
+      {/* Greater-branded back-pill above the spoofed Blockstream
+          chrome. Made deliberately prominent (CHB pink, full-width
+          strip) so visitors don't get marooned inside the demo and
+          can always get back to the Greater chooser / main site.
+          Mirrored on BitcoinDemo. */}
+      <div className="bg-[hsl(330,80%,60%)] text-white text-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-4">
+          <Link
+            href="/demo/fintech"
+            className="inline-flex items-center gap-2 font-medium hover:underline"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Greater
+          </Link>
+          <span className="hidden sm:inline text-white/80 text-xs font-mono">
+            You're in a Greater portfolio demo — the chat widget is the real product.
+          </span>
+        </div>
+      </div>
+
       <nav className="bg-[#111316] text-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">

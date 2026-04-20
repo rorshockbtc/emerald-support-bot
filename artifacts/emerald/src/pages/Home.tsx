@@ -162,7 +162,7 @@ function Hero() {
           className="mt-9 flex flex-wrap gap-3"
         >
           <Link
-            href="/demo/blockstream"
+            href="/demo/fintech"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover-elevate active-elevate active:scale-[0.97]"
             data-testid="link-hero-try-demo"
           >

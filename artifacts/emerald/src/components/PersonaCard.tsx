@@ -15,7 +15,7 @@ export function PersonaCard({ persona }: { persona: Persona }) {
   const [imageOpen, setImageOpen] = useState(true);
   const isLive = persona.demoStatus === "live";
   const demoHref =
-    persona.slug === "fintech" ? "/demo/blockstream" : `/demo/${persona.slug}`;
+    persona.slug === "fintech" ? "/demo/fintech" : `/demo/${persona.slug}`;
 
   return (
     <article
