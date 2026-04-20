@@ -706,23 +706,40 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       jobId: string,
     ): Promise<void> => {
       const privFlagKey = `${flagKey}:private`;
+      const privJobId = `${jobId}:private`;
       const privUrl = `${import.meta.env.BASE_URL}seeds/${slug}-private.json`;
+
+      // When the overlay file is missing or empty, drop any prior
+      // overlay slice from the index so a removed `greater-private.json`
+      // doesn't leave stale chunks lingering after a deploy. We only
+      // pay the deleteByJob cost on the transition from "had overlay"
+      // → "no overlay", gated on the persisted flag.
+      const dropStaleOverlay = async (reason: "absent" | "empty") => {
+        const prior = await getMetaFlag(privFlagKey);
+        if (prior?.value && prior.value !== "absent") {
+          await deleteByJob(privJobId);
+        }
+        await setMetaFlag(privFlagKey, "absent");
+        // reason kept for future telemetry; no-op today.
+        void reason;
+      };
+
       let privBundle: SeedBundle | null = null;
       try {
         const res = await fetch(privUrl, { cache: "no-cache" });
         if (res.ok) {
           privBundle = (await res.json()) as SeedBundle;
         } else {
-          await setMetaFlag(privFlagKey, "absent");
+          await dropStaleOverlay("absent");
           return;
         }
       } catch {
-        await setMetaFlag(privFlagKey, "absent");
+        await dropStaleOverlay("absent");
         return;
       }
 
       if (!privBundle?.documents?.length) {
-        await setMetaFlag(privFlagKey, "absent");
+        await dropStaleOverlay("empty");
         return;
       }
 
@@ -730,7 +747,6 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       const existingFlag = await getMetaFlag(privFlagKey);
       if (existingFlag?.value === privVersion) return;
 
-      const privJobId = `${jobId}:private`;
       // Replace the prior overlay slice in full so a removed note
       // doesn't linger after the operator deletes it.
       await deleteByJob(privJobId);
