@@ -66,3 +66,11 @@ artifacts/emerald/public/seeds/bitcoin.json
 *.interview.md
 *.gguf
 *.onnx_data
+
+# Replit workspace files — dev environment only, not for external contributors
+replit.md
+.replit
+.cache/
+
+# Attached assets — Replit chat uploads, screenshots, PDFs used during dev
+attached_assets/

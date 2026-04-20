@@ -209,9 +209,6 @@ COMPLIANCE.md     # Engineering-grade compliance posture
 README.md         # You are here.
 ```
 
-For the monorepo conventions and the per-artifact contracts, see
-[`replit.md`](./replit.md).
-
 ---
 
 ## Credits
