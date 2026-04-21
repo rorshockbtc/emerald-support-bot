@@ -1437,7 +1437,7 @@ export function ChatWidget({
                         }}
                       >
                         <span className="font-semibold tracking-wide opacity-70">
-                          {m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Bot' : m.role}
+                          {m.role === 'user' ? 'You' : 'Bot'}
                         </span>
                         <p className="whitespace-pre-wrap mt-0.5">{m.content}</p>
                       </div>
