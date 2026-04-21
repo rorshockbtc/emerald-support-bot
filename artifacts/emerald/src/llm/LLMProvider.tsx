@@ -1240,7 +1240,33 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
     async (
       text: string,
       slug: string,
+      biasFilter?: readonly string[],
+      biasId?: string,
     ): Promise<{ answer: string; score: number } | null> => {
+      // Bias-aware bypass. The curated Q&A bank is bias-blind by
+      // construction (one canonical answer per question). When the
+      // visitor has dialled in a non-neutral perspective via the
+      // bias toggle (e.g. Bitcoin Core vs Knots, or persona-default
+      // 'customer' vs 'company'), serving them the bank's canonical
+      // answer would silently *erase* the toggle — the most damaging
+      // credibility bug in the platform: the bias strip is the
+      // headline UX claim and a bot that ignores it is worse than
+      // no toggle at all. So when a non-neutral bias is active,
+      // skip the cache entirely and let the bias-aware retrieval +
+      // bias-specific system prompt take over.
+      //
+      // We check BOTH signals so the predicate matches the
+      // ChatWidget's pre-cache skip exactly, regardless of whether
+      // a curated Pipe is mounted (Pipe → biasFilter populated;
+      // persona-default audience toggle → only biasId populated).
+      // Without both checks, the cache behavior would diverge based
+      // on local-model readiness vs cloud fallback path.
+      const biasIsActive =
+        (biasFilter &&
+          biasFilter.length > 0 &&
+          biasFilter.some((b) => b !== "neutral")) ||
+        (typeof biasId === "string" && biasId !== "neutral");
+      if (biasIsActive) return null;
       const entry = qaBankRef.current.get(slug);
       if (!entry || entry.status !== "ready" || entry.items.length === 0) {
         return null;
@@ -1339,6 +1365,8 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           const hit = await lookupCachedAnswerRef.current?.(
             userMessage,
             options.personaSlug,
+            options.biasFilter,
+            options.biasId,
           );
           if (hit) {
             return {
@@ -1431,12 +1459,22 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         const scope =
           options?.refusalScope ??
           "the topics in this bot's curated knowledge base";
+        // Graceful off-script reframe (replaces the older
+        // wall-of-text refusal). Friend feedback before launch:
+        // the previous copy read like a system error and made the
+        // bot feel broken on the very first off-topic question. The
+        // honest framing — "I can't ground this from my snippets,
+        // here's what I do cover, and here's the human path" — is
+        // shorter, friendlier, and matches the rest of the demo's
+        // tone. The privacy badge story is moved to the disclaimer
+        // banner so it doesn't have to fire on every refusal.
         const text = [
-          `Your question doesn't match anything in my curated knowledge base for ${scope}, so I'm going to decline rather than guess from the underlying model's pretraining.`,
+          `That one's outside what I can answer from ${scope} — I won't guess from the underlying model's pretraining, so I'd rather be honest about the gap.`,
           "",
-          "This is on purpose. The badge in the header is real: I'm running entirely in your browser, but the in-browser model is small and would happily hallucinate a confident-sounding answer if I let it. I only answer when I have a relevant snippet to ground the answer in.",
+          "Two good next moves:",
           "",
-          "Try one of the suggested prompts, rephrase your question to be about something this bot covers, or use the contact form on this page to send it to a human.",
+          "• Try one of the suggested prompts at the top of the chat — they're the things I'm most confident on.",
+          "• Or use the contact form on this page to send the question to a human; I'll preserve everything you've typed so you don't have to start over.",
         ].join("\n");
         return {
           text,

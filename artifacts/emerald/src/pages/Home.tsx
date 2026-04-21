@@ -301,9 +301,13 @@ function PersonasGrid() {
             Each card is a real product surface, not a placeholder.
           </h2>
           <p className="text-base text-muted-foreground mt-3 max-w-2xl">
-            One demo is wired live today (FinTech &mdash; the Blockstream bot).
-            The other five are persona-tuned holding pages while we index their
-            pilot corpora.
+            One bot is shipped end-to-end today &mdash; FinTech &amp; Bitcoin,
+            with a curated multi-thousand-snippet corpus, a Q&amp;A bank, and
+            three bias variants you can toggle mid-conversation. The other
+            five cards are the same architecture in Starter shape: real
+            persona, real prompts, a small seed corpus, and a clearly marked
+            holding page until a pilot client commissions the full build-out.
+            The badge on each card tells you exactly where it stands.
           </p>
         </div>
 

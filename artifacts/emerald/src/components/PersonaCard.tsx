@@ -26,14 +26,29 @@ export function PersonaCard({ persona }: { persona: Persona }) {
         <button
           type="button"
           onClick={() => setImageOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-2 hover-elevate"
+          className="w-full flex items-center justify-between gap-2 px-4 py-2 hover-elevate"
           aria-expanded={imageOpen}
           data-testid={`button-toggle-image-${persona.slug}`}
         >
-          <span className="chb-mono-label text-muted-foreground">
+          <span className="chb-mono-label text-muted-foreground truncate min-w-0">
             {persona.shortName}
           </span>
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 flex-wrap justify-end shrink-0">
+            {/* Knowledge-base fullness badge. Honest signal so a
+                visitor doesn't expect a Robust answer from a Starter
+                corpus. The label is a single word ("Starter",
+                "Basic", "Partial", "Robust") so it works inside the
+                tight card chrome and matches the four-tier vocab on
+                the homepage intro. */}
+            {persona.kbStatus && (
+              <span
+                className="chb-mono-label px-1.5 py-0.5 rounded border border-border text-muted-foreground"
+                title={`Knowledge base: ${persona.kbStatus}`}
+                data-testid={`badge-kb-${persona.slug}`}
+              >
+                KB: {persona.kbStatus}
+              </span>
+            )}
             <span
               className="chb-mono-label"
               style={{

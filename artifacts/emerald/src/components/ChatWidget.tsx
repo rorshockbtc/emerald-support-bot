@@ -385,11 +385,36 @@ export function ChatWidget({
     // this BEFORE the model-readiness branch means early-session
     // questions during model warmup also benefit instead of burning
     // a cloud call. Failures here are silent: the cache is best-effort.
-    if (personaSlug) {
+    // Bias-aware skip: when the visitor has dialled in a non-neutral
+    // perspective (e.g. Bitcoin Core or Knots), bypass the bias-blind
+    // curated cache so the bias toggle is never silently ignored. The
+    // bias-aware retrieval + bias-specific system prompt downstream
+    // will handle the answer. Without this, the headline UX claim of
+    // the platform — "the bias strip is real, switch it and watch the
+    // answer move" — silently breaks on every cached question.
+    const biasIsNonNeutral =
+      !!activeBiasOption &&
+      pipe.activeBiasId !== undefined &&
+      pipe.activeBiasId !== 'neutral';
+    if (personaSlug && !biasIsNonNeutral) {
       try {
         const cacheStart = performance.now();
         const hit = await llm.tryQaCache(userText, personaSlug);
         if (hit) {
+          // Latency floor on canned responses. The cache returns in
+          // 20-80ms, which makes the bot feel like a precanned FAQ
+          // (the friend review's exact complaint). 600-900ms reads
+          // as "thinking" without becoming annoying. Floor is
+          // applied AFTER we know we have a hit so genuine cache
+          // misses still feel snappy. We use the elapsed cache time
+          // as part of the budget — not adding on top of it — so
+          // total perceived latency stays in the 600-900ms band.
+          const elapsed = performance.now() - cacheStart;
+          const target = 600 + Math.random() * 300;
+          const remaining = Math.max(0, target - elapsed);
+          if (remaining > 0) {
+            await new Promise((r) => setTimeout(r, remaining));
+          }
           const botMsg: MessageProps = {
             id: uuidv4(),
             role: 'bot',

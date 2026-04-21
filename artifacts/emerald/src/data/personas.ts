@@ -42,6 +42,21 @@ export type Persona = {
    * has no curated corpus to retrieve from.
    */
   defaultBias?: PersonaDefaultBias;
+  /**
+   * Honest, user-visible signal of how stocked this persona's
+   * curated knowledge base is. Surfaces on the homepage card so
+   * visitors don't expect Robust answers from a Starter corpus.
+   * Friend-review feedback before launch: implying every persona
+   * was production-ready when only one was created an
+   * expectation-mismatch credibility risk; this is the cheapest
+   * fix that preserves the "six bots / six industries" narrative.
+   *
+   *   - 'Starter'  → seed corpus only (a few hundred snippets), holding-page demo
+   *   - 'Basic'    → curated Q&A bank wired in, modest seed corpus
+   *   - 'Partial'  → broad corpus + Q&A bank, some gaps
+   *   - 'Robust'   → full curated corpus, Q&A bank, bias variants, live demo
+   */
+  kbStatus?: 'Starter' | 'Basic' | 'Partial' | 'Robust';
 };
 
 export type PersonaDefaultBias = {
@@ -123,6 +138,7 @@ const PERSONAS: Persona[] = [
     slug: 'startups',
     name: 'Startups',
     shortName: 'Startups',
+    kbStatus: 'Starter',
     defaultBias: {
       defaultId: 'customer',
       options: [
@@ -225,6 +241,7 @@ Founders who've already realized the chatbot in their corner is costing them dea
     slug: 'faith',
     name: 'Faith-Based Organizations',
     shortName: 'Faith',
+    kbStatus: 'Starter',
     defaultBias: {
       defaultId: 'member',
       options: [
@@ -326,6 +343,7 @@ Churches and faith-based organizations whose distinctive teaching is locked insi
   },
   {
     slug: 'schools',
+    kbStatus: 'Starter',
     name: 'Private Schools & Families',
     shortName: 'Schools & Families',
     defaultBias: {
@@ -431,6 +449,7 @@ Heads of school, deans of academic affairs, and curriculum directors who are wat
   },
   {
     slug: 'small-business',
+    kbStatus: 'Starter',
     name: 'Small Businesses',
     shortName: 'Small Business',
     defaultBias: {
@@ -534,6 +553,7 @@ Owner-operators who are competent enough to know their site's chat experience is
   },
   {
     slug: 'healthtech',
+    kbStatus: 'Starter',
     name: 'HealthTech',
     shortName: 'HealthTech',
     defaultBias: {
@@ -639,6 +659,7 @@ Healthtech founders and product leads who are watching the AI wave from outside 
     slug: 'fintech',
     name: 'FinTech & Bitcoin',
     shortName: 'FinTech',
+    kbStatus: 'Robust',
     defaultBias: {
       defaultId: 'customer',
       options: [
@@ -730,7 +751,19 @@ Bitcoin companies, Lightning startups, custodial and non-custodial wallet provid
   },
 ];
 
-export const personas = PERSONAS;
+/**
+ * Public personas list. Re-ordered so FinTech (the only Robust,
+ * live-demo persona) sits in the top-left of the homepage grid —
+ * the position with the highest scan-attention. The remaining five
+ * Starter personas keep their original relative order. Pre-launch
+ * friend review flagged that putting holding-page personas first
+ * was costing us the credibility of the live demo.
+ */
+const FEATURED_FIRST_SLUG = 'fintech';
+export const personas = [
+  ...PERSONAS.filter((p) => p.slug === FEATURED_FIRST_SLUG),
+  ...PERSONAS.filter((p) => p.slug !== FEATURED_FIRST_SLUG),
+];
 
 export function getPersona(slug: string): Persona | undefined {
   return PERSONAS.find((p) => p.slug === slug);
