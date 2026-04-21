@@ -906,7 +906,7 @@ export function ChatWidget({
                       openClawActive={llm.openClawActive}
                     />
                   </span>
-                  <ReadinessPill status={llm.status} progress={llm.progress} stageLabel={llm.loadStageLabel} />
+                  <ReadinessPill status={llm.status} progress={llm.progress} stageLabel={llm.loadStageLabel} chatTheme={chatTheme} />
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -1176,6 +1176,24 @@ export function ChatWidget({
                   );
                 })}
 
+                {/* Gear-menu hint — rendered only in the empty state
+                    so first-time visitors discover the settings menu
+                    where the depth lives (Q&A bank, OpenClaw BYO LLM,
+                    support-ticket export, theme toggle). Disappears
+                    after the first user turn. */}
+                {realTurns.length === 0 && (
+                  <div
+                    className="mt-2 mx-1 flex items-start gap-2 rounded-md border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))] px-3 py-2 text-[11px] leading-snug text-[hsl(var(--widget-muted))]"
+                    data-testid="empty-state-gear-hint"
+                  >
+                    <Settings className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>
+                      Tap the <span className="font-semibold text-[hsl(var(--widget-fg))]">gear</span>{" "}
+                      for the Q&amp;A bank, support-ticket export, and BYO-LLM (OpenClaw) setup.
+                    </span>
+                  </div>
+                )}
+
                 {/* Suggested-prompt chips — rendered only in the empty
                     state (no real turns yet) so they don't clutter
                     the transcript once the conversation starts. */}
@@ -1184,7 +1202,7 @@ export function ChatWidget({
                     className="mt-2 flex flex-wrap gap-2 px-1"
                     data-testid="suggested-prompts"
                   >
-                    <span className="w-full text-[10px] uppercase tracking-wider text-[hsl(var(--widget-muted))] mb-1">
+                    <span className="w-full text-[10px] tracking-wide text-[hsl(var(--widget-muted))] mb-1">
                       Try asking
                     </span>
                     {suggestedPrompts.map((prompt) => (
@@ -1233,7 +1251,7 @@ export function ChatWidget({
             <div className="px-4 py-3 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))]">
               {pipe.effectiveBiasOptions.length > 1 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--widget-muted))] shrink-0">
+                  <span className="text-[10px] tracking-wide text-[hsl(var(--widget-muted))] shrink-0">
                     {pipe.biasSource === 'pipe' ? 'Perspective' : 'Audience'}
                   </span>
                   <BiasToggle
@@ -1382,7 +1400,7 @@ export function ChatWidget({
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             <div className="rounded-md border border-border bg-muted/40 p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">
                   Transcript ({messages.length} {messages.length === 1 ? 'message' : 'messages'})
                 </span>
                 <button
@@ -1418,7 +1436,7 @@ export function ChatWidget({
                               : 'hsl(var(--muted-foreground) / 0.4)',
                         }}
                       >
-                        <span className="font-semibold uppercase tracking-wide opacity-70">
+                        <span className="font-semibold tracking-wide opacity-70">
                           {m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Bot' : m.role}
                         </span>
                         <p className="whitespace-pre-wrap mt-0.5">{m.content}</p>
@@ -1432,7 +1450,7 @@ export function ChatWidget({
             <div>
               <label
                 htmlFor="escalate-contact"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 mb-1.5"
+                className="text-xs font-semibold tracking-wide text-muted-foreground flex items-center gap-1 mb-1.5"
               >
                 <Mail className="w-3 h-3" />
                 How can we reach you? (optional)
@@ -1511,7 +1529,7 @@ function ModeBadge({
   if (openClawActive) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-px rounded border border-violet-500/40 bg-violet-500/10 text-violet-200"
+        className="inline-flex items-center gap-1 text-[9px] font-mono tracking-wide px-1.5 py-px rounded border border-violet-500/40 bg-violet-500/10 text-violet-200"
         title="OpenClaw mode — chat is being served by your own OpenAI-compatible endpoint. Greater is not making any cloud calls."
         data-testid="badge-mode"
       >
@@ -1523,7 +1541,7 @@ function ModeBadge({
   if (connected) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-px rounded border border-pink-500/40 bg-pink-500/10 text-pink-200"
+        className="inline-flex items-center gap-1 text-[9px] font-mono tracking-wide px-1.5 py-px rounded border border-pink-500/40 bg-pink-500/10 text-pink-200"
         title={
           pipeName
             ? `Greater mode · ${pipeName} — running with a curated Pipe loaded from data/pipes/. The shell is FOSS; the Pipe is the part that's for hire.`
@@ -1538,7 +1556,7 @@ function ModeBadge({
   }
   return (
     <span
-      className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-px rounded border border-[hsl(var(--widget-border))] bg-white/5 text-[hsl(var(--widget-muted))]"
+      className="inline-flex items-center gap-1 text-[9px] font-mono tracking-wide px-1.5 py-px rounded border border-[hsl(var(--widget-border))] bg-white/5 text-[hsl(var(--widget-muted))]"
       title="Generic mode — no Pipe is loaded for this demo. The FOSS shell runs honestly without one; mounting a Pipe under data/pipes/ unlocks Greater mode for this persona."
       data-testid="badge-mode"
     >
@@ -1557,25 +1575,36 @@ function ReadinessPill({
   status,
   progress,
   stageLabel,
+  chatTheme,
 }: {
   status: ModelStatus;
   progress: number;
   stageLabel: string;
+  chatTheme: 'dark' | 'light';
 }) {
+  // Widget theme is controlled by `data-theme` on the widget root,
+  // NOT by Tailwind's document-level `.dark` class — so a `dark:`
+  // modifier here would key off the wrong source of truth and the
+  // pill colour would invert relative to the surface it sits on.
+  // Pick the per-status pair explicitly from `chatTheme`.
+  const isDark = chatTheme === 'dark';
   let label = '';
   let color = 'text-[hsl(var(--widget-muted))]';
   let icon: React.ReactNode = <CircleDashed className="w-3 h-3" />;
 
   if (status === 'ready') {
     label = 'Local AI ready';
-    color = 'text-emerald-400';
+    // Friend-review feedback: text-emerald-400 was unreadable on the
+    // light widget background. Light variant (700) passes WCAG AA on
+    // white; dark variant keeps the original glow.
+    color = isDark ? 'text-emerald-400' : 'text-emerald-700';
     icon = <ShieldCheck className="w-3 h-3" />;
   } else if (status === 'unsupported') {
     label = 'Cloud mode';
-    color = 'text-sky-300';
+    color = isDark ? 'text-sky-300' : 'text-sky-700';
   } else if (status === 'error') {
     label = 'Cloud mode (local AI failed)';
-    color = 'text-amber-400';
+    color = isDark ? 'text-amber-400' : 'text-amber-700';
   } else if (status === 'idle') {
     label = 'Preparing local AI…';
   } else {
@@ -1587,7 +1616,7 @@ function ReadinessPill({
 
   return (
     <span
-      className={cn('flex items-center gap-1 text-[10px] uppercase tracking-wider truncate', color)}
+      className={cn('flex items-center gap-1 text-[10px] tracking-wide truncate font-medium', color)}
       data-testid="status-llm-pill"
       title={label}
     >

@@ -22,6 +22,7 @@ export default function Home() {
       <PrinciplesStrip />
       <Walkthrough />
       <FeatureHighlights />
+      <CXCostSection />
       <PersonasGrid />
       <ContactCTASection tone="muted" />
     </>
@@ -315,9 +316,6 @@ function Walkthrough() {
             <li
               key={s.eyebrow}
               className="flex flex-col gap-3 rounded-xl border border-border bg-secondary/40 p-5"
-              style={
-                i === 1 ? { transform: "translateY(8px)" } : undefined
-              }
               data-testid={`walkthrough-step-${i + 1}`}
             >
               <div className="flex items-center gap-2">
@@ -466,6 +464,157 @@ function FeatureHighlights() {
             </article>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function CXCostSection() {
+  // Friend-review feedback + Kyle's LinkedIn launch piece: Greater
+  // is not just "another chatbot." The market is paying $55-$330
+  // per seat + $50 AI add-on + $1-$2 every time a bot resolves an
+  // issue. Greater runs in the visitor's browser, so resolution
+  // economics are $0 — and the under-surfaced product features
+  // (gear menu, support-ticket export) are what make that real.
+  // Numbers below are sourced from Kyle's article scheduled for
+  // publication and are intentionally cited as ranges, not specs.
+  const vendors = [
+    { name: "Zendesk Suite", seat: "$55–$115", ai: "$50 AI add-on", per: "$1.50 / resolution" },
+    { name: "Intercom", seat: "$29–$132", ai: "—", per: "$0.99 / resolution" },
+    { name: "HubSpot", seat: "$90–$150", ai: "—", per: "$1.00 / conversation" },
+    { name: "Salesforce", seat: "$25–$330", ai: "—", per: "$2.00 / interaction" },
+  ];
+  const features = [
+    {
+      eyebrow: "The gear menu",
+      title: "Where the depth lives.",
+      body: "Q&A bank, OpenClaw BYO-LLM toggle, persona bias toggle, theme switch — all one click into the chat's settings. The hint inside the bot points first-time visitors there.",
+    },
+    {
+      eyebrow: "Support-ticket export",
+      title: "ZenDesk-ready JSON, no per-seat tax.",
+      body: "When the bot can't answer, it builds a redacted, locally-summarized ticket payload in the exact shape your helpdesk already accepts. The visitor stays anonymous; the agent gets context.",
+      cta: { label: "See the export preview", href: "/demo/fintech/ticket" },
+    },
+    {
+      eyebrow: "$0 / resolution",
+      title: "CAC is $400–$15k. Bot resolutions should be free.",
+      body: "Inference runs on the visitor's GPU. There is no per-message API cost to amortize against your acquisition spend, and no vendor sitting between you and your customers.",
+    },
+  ];
+  return (
+    <section
+      id="cx-cost"
+      className="border-b border-border"
+      data-testid="section-cx-cost"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="mb-10 max-w-2xl">
+          <p className="chb-mono-eyebrow text-muted-foreground mb-2">
+            More than a chatbot
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+            The vendor stack charges you a seat tax, an AI tax, and a
+            per-resolution tax. Greater charges you{" "}
+            <span className="text-pink-500">none of that</span>.
+          </h2>
+          <p className="text-base text-muted-foreground mt-3">
+            Modern helpdesks have moved to "outcome-based billing" — you
+            pay every time the AI does its job. That bill scales with
+            your success. Greater's runs on the visitor's device, so
+            the marginal cost of a resolution is zero.
+          </p>
+        </div>
+
+        <div
+          className="rounded-xl border border-border bg-card overflow-hidden mb-10"
+          data-testid="cx-cost-table"
+        >
+          <div className="grid grid-cols-12 px-4 sm:px-5 py-2.5 bg-secondary/60 border-b border-border chb-mono-eyebrow text-[11px] text-muted-foreground">
+            <div className="col-span-4 sm:col-span-3">Provider</div>
+            <div className="col-span-3 sm:col-span-3">Seat</div>
+            <div className="hidden sm:block sm:col-span-3">AI add-on</div>
+            <div className="col-span-5 sm:col-span-3">Per-event fee</div>
+          </div>
+          {vendors.map((v) => (
+            <div
+              key={v.name}
+              className="grid grid-cols-12 items-center px-4 sm:px-5 py-3 border-b border-border last:border-b-0 text-sm"
+              data-testid={`cx-cost-row-${v.name.toLowerCase().replace(/\s+/g, "-")}`}
+            >
+              <div className="col-span-4 sm:col-span-3 font-medium">
+                {v.name}
+              </div>
+              <div className="col-span-3 sm:col-span-3 font-mono text-xs sm:text-sm">
+                {v.seat}
+                <span className="text-muted-foreground"> /seat·mo</span>
+              </div>
+              <div className="hidden sm:block sm:col-span-3 font-mono text-xs sm:text-sm text-muted-foreground">
+                {v.ai}
+              </div>
+              <div className="col-span-5 sm:col-span-3 font-mono text-xs sm:text-sm">
+                {v.per}
+              </div>
+            </div>
+          ))}
+          <div
+            className="grid grid-cols-12 items-center px-4 sm:px-5 py-3 bg-pink-500/5 text-sm"
+            data-testid="cx-cost-row-greater"
+          >
+            <div className="col-span-4 sm:col-span-3 font-semibold text-pink-600 dark:text-pink-400">
+              Greater
+            </div>
+            <div className="col-span-3 sm:col-span-3 font-mono text-xs sm:text-sm">
+              $0
+              <span className="text-muted-foreground"> · MIT shell</span>
+            </div>
+            <div className="hidden sm:block sm:col-span-3 font-mono text-xs sm:text-sm text-muted-foreground">
+              BYO local LLM (OpenClaw)
+            </div>
+            <div className="col-span-5 sm:col-span-3 font-mono text-xs sm:text-sm font-semibold">
+              $0 / resolution
+            </div>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-5">
+          {features.map((f) => (
+            <article
+              key={f.eyebrow}
+              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5"
+              data-testid={`cx-cost-feature-${f.eyebrow.toLowerCase().replace(/\W+/g, "-")}`}
+            >
+              <p className="chb-mono-eyebrow text-pink-600 dark:text-pink-400">
+                {f.eyebrow}
+              </p>
+              <h3 className="text-base font-semibold leading-snug">
+                {f.title}
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {f.body}
+              </p>
+              {f.cta && (
+                <div className="mt-auto pt-2">
+                  <Link
+                    href={f.cta.href}
+                    className="chb-mono-label text-foreground hover:text-pink-500 inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                    data-testid={`cx-cost-feature-cta-${f.eyebrow.toLowerCase().replace(/\W+/g, "-")}`}
+                  >
+                    {f.cta.label}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+
+        <p className="mt-8 text-sm text-muted-foreground max-w-3xl">
+          If your CAC is $400–$15k per customer, the math on giving
+          every visitor a knowledgeable bot for free is
+          straightforward. <Link href="/contact" className="underline underline-offset-2 hover:text-pink-500">Get in touch</Link>{" "}
+          if you want one tailored to your knowledge base.
+        </p>
       </div>
     </section>
   );

@@ -272,19 +272,21 @@
   border-radius: 0 0.375rem 0.375rem 0;
 }
 
-/* CHB-aligned utility for nav/label microtype */
+/* CHB-aligned utility for nav/label microtype.
+   Friend-review feedback: the previous all-caps + wide letter-spacing
+   treatment was hard to read and overflowed pill containers. Now the
+   mono font carries the brand cue at sentence/title case with a gentle
+   tracking bump. */
 .chb-mono-label {
   font-family: var(--font-mono);
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.04em;
 }
 
 .chb-mono-eyebrow {
   font-family: var(--font-mono);
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.04em;
 }
 
 .chb-display {
