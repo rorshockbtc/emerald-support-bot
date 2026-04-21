@@ -62,6 +62,7 @@ function PersonaDemoShellInner({ persona }: { persona: Persona }) {
         <SkipToContent />
         <MockNav persona={persona} />
         <MockBreadcrumb persona={persona} />
+        <ScopingStrip persona={persona} />
 
         <main id="main-content" tabIndex={-1} className="flex-1">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -209,6 +210,53 @@ function MockBreadcrumb({ persona }: { persona: Persona }) {
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Persistent one-line scoping strip directly under the mock breadcrumb.
+ * Tells the visitor — in plain language, before they ask their first
+ * question — exactly what this bot's curated knowledge actually
+ * covers, what it doesn't, and where to go for off-scope questions.
+ * Friend feedback before launch: visitors landing on a demo page
+ * have no way of knowing whether the bot is general-purpose or
+ * scope-bounded, so they ask "what's the capital of Lebanon?" first
+ * and conclude the product is broken when it refuses. This strip
+ * sets the contract up front. The first three article headings are a
+ * decent honest preview of the bot's actual scope without having to
+ * maintain a parallel list per persona.
+ */
+function ScopingStrip({ persona }: { persona: Persona }) {
+  const scenario = persona.scenario!;
+  const topics = scenario.shell.articleSections
+    .slice(0, 3)
+    .map((s) => s.heading);
+  const itemCount = persona.kbItems;
+  return (
+    <div
+      className="border-b border-amber-200 bg-amber-50/70 text-amber-900"
+      data-testid={`scoping-strip-${persona.slug}`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-xs sm:text-[13px] leading-snug flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-semibold uppercase tracking-wide text-amber-900/80">
+          Scope
+        </span>
+        <span className="opacity-70">·</span>
+        <span>
+          This bot only knows{" "}
+          <span className="font-medium">
+            {topics.join(", ")}
+          </span>
+          {typeof itemCount === "number" && (
+            <span className="text-amber-900/70">
+              {" "}({itemCount} curated items)
+            </span>
+          )}
+          . Off-topic questions are politely refused — use the contact
+          form for anything else.
+        </span>
       </div>
     </div>
   );

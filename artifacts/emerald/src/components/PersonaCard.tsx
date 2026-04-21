@@ -43,10 +43,16 @@ export function PersonaCard({ persona }: { persona: Persona }) {
             {persona.kbStatus && (
               <span
                 className="chb-mono-label px-1.5 py-0.5 rounded border border-border text-muted-foreground"
-                title={`Knowledge base: ${persona.kbStatus}`}
+                title={
+                  typeof persona.kbItems === "number"
+                    ? `Knowledge base: ${persona.kbItems} curated Q&A items, ${persona.kbStatus} tier`
+                    : `Knowledge base: ${persona.kbStatus}`
+                }
                 data-testid={`badge-kb-${persona.slug}`}
               >
-                KB: {persona.kbStatus}
+                {typeof persona.kbItems === "number"
+                  ? `${persona.kbItems} items · ${persona.kbStatus}`
+                  : `KB: ${persona.kbStatus}`}
               </span>
             )}
             <span

@@ -57,6 +57,15 @@ export type Persona = {
    *   - 'Robust'   → full curated corpus, Q&A bank, bias variants, live demo
    */
   kbStatus?: 'Starter' | 'Basic' | 'Partial' | 'Robust';
+  /**
+   * Number of curated Q&A items in the persona's bank, surfaced on
+   * the homepage card next to the kbStatus tier so visitors get a
+   * concrete unit ("30 items · Starter") instead of a marketing
+   * label alone. Counts are taken at build-time from the actual
+   * `public/qa-bank/<slug>.json` files; if you add or remove items
+   * there, update this number to keep the card honest.
+   */
+  kbItems?: number;
 };
 
 export type PersonaDefaultBias = {
@@ -139,6 +148,7 @@ const PERSONAS: Persona[] = [
     name: 'Startups',
     shortName: 'Startups',
     kbStatus: 'Starter',
+    kbItems: 30,
     defaultBias: {
       defaultId: 'customer',
       options: [
@@ -242,6 +252,7 @@ Founders who've already realized the chatbot in their corner is costing them dea
     name: 'Faith-Based Organizations',
     shortName: 'Faith',
     kbStatus: 'Starter',
+    kbItems: 30,
     defaultBias: {
       defaultId: 'member',
       options: [
@@ -344,6 +355,7 @@ Churches and faith-based organizations whose distinctive teaching is locked insi
   {
     slug: 'schools',
     kbStatus: 'Starter',
+    kbItems: 30,
     name: 'Private Schools & Families',
     shortName: 'Schools & Families',
     defaultBias: {
@@ -450,6 +462,7 @@ Heads of school, deans of academic affairs, and curriculum directors who are wat
   {
     slug: 'small-business',
     kbStatus: 'Starter',
+    kbItems: 30,
     name: 'Small Businesses',
     shortName: 'Small Business',
     defaultBias: {
@@ -554,6 +567,7 @@ Owner-operators who are competent enough to know their site's chat experience is
   {
     slug: 'healthtech',
     kbStatus: 'Starter',
+    kbItems: 30,
     name: 'HealthTech',
     shortName: 'HealthTech',
     defaultBias: {
@@ -660,6 +674,7 @@ Healthtech founders and product leads who are watching the AI wave from outside 
     name: 'FinTech & Bitcoin',
     shortName: 'FinTech',
     kbStatus: 'Robust',
+    kbItems: 30,
     defaultBias: {
       defaultId: 'customer',
       options: [

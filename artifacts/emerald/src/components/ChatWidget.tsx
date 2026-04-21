@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/input';
 import { useLLM } from '@/llm/LLMProvider';
 import { usePipe } from '@/pipes/PipeContext';
 import { useToast } from '@/hooks/use-toast';
+import { useContact } from '@/components/ContactContext';
 import { cn } from '@/lib/utils';
 import type { AskOptions, Bias, ChatTurn, CloudReason, ModelStatus } from '@/llm/types';
 import { saveTranscript } from '@/lib/ticketTranscript';
@@ -243,6 +244,7 @@ export function ChatWidget({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
+  const { open: openContact } = useContact();
 
   const chatMutation = useSendMessage();
   const escalateMutation = useEscalateTicket();
@@ -548,6 +550,26 @@ export function ChatWidget({
       const askLatency = Math.round(performance.now() - askStart);
       const isOpenClaw = answer.source === 'openclaw';
       const isQaCache = answer.source === 'qa-cache';
+      // Hard refusals are deterministic too (no model tokens spent —
+      // they're produced by the retrieval-floor branch in
+      // LLMProvider.ask). Without a latency floor they snap back in
+      // ~30ms which reads as "the bot didn't even try", which is
+      // exactly the wrong tone for what is supposed to be an honest
+      // "I can't ground this" message. Match the qa-cache band so
+      // refusals feel deliberated, not reflexive. Detected via the
+      // thoughtTrace.reasoning sentinel that LLMProvider sets on
+      // hard-refusal returns.
+      const isHardRefusal =
+        answer.source === 'local' &&
+        typeof answer.thoughtTrace?.reasoning === 'string' &&
+        answer.thoughtTrace.reasoning.startsWith('Hard refusal');
+      if (isHardRefusal) {
+        const target = 600 + Math.random() * 300;
+        const remaining = Math.max(0, target - askLatency);
+        if (remaining > 0) {
+          await new Promise((r) => setTimeout(r, remaining));
+        }
+      }
       // Top retrieval similarity from the thought trace (when present)
       // is a useful retrieval-quality signal alongside the binary
       // thumbs rating; record it on the message so it's posted with
@@ -573,6 +595,7 @@ export function ChatWidget({
         localOnly: localOnlyDueToCap,
         latencyMs: askLatency,
         cosineScore: topRetrievalScore,
+        isHardRefusal,
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
@@ -1120,6 +1143,27 @@ export function ChatWidget({
                       sessionId={sessionId}
                       personaSlug={personaSlug}
                       precedingUserMessage={precedingUser}
+                      onBrowseKb={
+                        msg.isHardRefusal
+                          ? () => setShowQaBankPanel(true)
+                          : undefined
+                      }
+                      onContact={
+                        msg.isHardRefusal ? openContact : undefined
+                      }
+                      onRephrase={
+                        msg.isHardRefusal
+                          ? () => {
+                              // Pre-fill the input with the visitor's
+                              // last question so they can edit it
+                              // instead of retyping from scratch.
+                              if (precedingUser) {
+                                setInput(precedingUser);
+                              }
+                              inputRef.current?.focus();
+                            }
+                          : undefined
+                      }
                     />
                   );
                 })}

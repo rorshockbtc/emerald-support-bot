@@ -70,6 +70,23 @@ export interface MessageProps {
    * feedback so the dashboard can spot weak-retrieval thumbs-down.
    */
   cosineScore?: number;
+  /**
+   * True when this reply is the deterministic "I can't ground this"
+   * refusal from the retrieval-floor branch in LLMProvider. Triggers
+   * the in-bubble action affordance (browse what I know · email a
+   * human · rephrase) so the visitor has a clear next move instead
+   * of staring at a dead end. Friend feedback before launch: a
+   * refusal with no escape hatch reads as a broken bot, not an
+   * honest one — the three actions turn the refusal into a
+   * navigation moment.
+   */
+  isHardRefusal?: boolean;
+  /** Open the curated Q&A panel (bot's actual scope). */
+  onBrowseKb?: () => void;
+  /** Open the Greater contact form modal (handoff to a human). */
+  onContact?: () => void;
+  /** Re-focus the chat input so the visitor can reword the question. */
+  onRephrase?: () => void;
 }
 
 export function ChatMessage({
@@ -94,6 +111,10 @@ export function ChatMessage({
   precedingUserMessage,
   latencyMs,
   cosineScore,
+  isHardRefusal,
+  onBrowseKb,
+  onContact,
+  onRephrase,
 }: MessageProps) {
   const isBot = role === 'bot';
   const { toast } = useToast();
@@ -205,6 +226,51 @@ export function ChatMessage({
               ? renderWithCitations(content, thoughtTrace.chunks, handleCitationClick)
               : content}
           </div>
+
+          {/* Hard-refusal action affordance. Three plain, scoped
+              next steps so the visitor isn't left at a dead end:
+              (1) browse what the bot does cover, (2) hand off to a
+              human, (3) reword the question. Only renders when the
+              parent passes the corresponding handlers, so this row
+              is invisible (and zero-cost) on every non-refusal turn
+              and on hosts that haven't wired the handlers up yet. */}
+          {isBot && isHardRefusal && (onBrowseKb || onContact || onRephrase) && (
+            <div
+              className="mt-3 pt-3 border-t border-[hsl(var(--border))] flex flex-wrap gap-2"
+              data-testid="refusal-actions"
+            >
+              {onBrowseKb && (
+                <button
+                  type="button"
+                  onClick={onBrowseKb}
+                  className="text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-200 hover:bg-emerald-500/10 hover:border-emerald-400/50 transition-colors"
+                  data-testid="button-refusal-browse-kb"
+                >
+                  Browse what I know
+                </button>
+              )}
+              {onContact && (
+                <button
+                  type="button"
+                  onClick={onContact}
+                  className="text-xs px-3 py-1.5 rounded-full border border-pink-500/40 bg-pink-500/10 text-pink-200 hover:bg-pink-500/20 hover:border-pink-400/60 transition-colors"
+                  data-testid="button-refusal-contact"
+                >
+                  Email a human
+                </button>
+              )}
+              {onRephrase && (
+                <button
+                  type="button"
+                  onClick={onRephrase}
+                  className="text-xs px-3 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 text-[hsl(var(--muted-foreground))] hover:text-foreground hover:border-[hsl(var(--border))]/80 transition-colors"
+                  data-testid="button-refusal-rephrase"
+                >
+                  Rephrase the question
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Metadata & Actions */}
