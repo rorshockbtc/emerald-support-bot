@@ -263,7 +263,7 @@ function BottomNav({
               data-testid={`link-bottomnav-${it.label.toLowerCase()}`}
             >
               <it.icon className="w-5 h-5" />
-              <span className="chb-mono-label text-[10px] tracking-[0.18em]">
+              <span className="chb-mono-label text-[11px] tracking-[0.18em]">
                 {it.label}
               </span>
             </Link>
@@ -276,7 +276,7 @@ function BottomNav({
           data-testid="button-bottomnav-contact"
         >
           <MessageSquare className="w-5 h-5" style={{ color: "#FE299E" }} />
-          <span className="chb-mono-label text-[10px] tracking-[0.18em]">
+          <span className="chb-mono-label text-[11px] tracking-[0.18em]">
             Contact
           </span>
         </button>

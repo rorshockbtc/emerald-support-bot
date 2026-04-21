@@ -1065,7 +1065,7 @@ export function ChatWidget({
             </AnimatePresence>
 
             {llm.bundleProgress && !llm.bundleProgress.done && (
-              <div className="bg-[hsl(var(--widget-card))] border-b border-[hsl(var(--widget-border))] px-4 py-2 text-[11px] text-[hsl(var(--widget-fg))] leading-relaxed shrink-0">
+              <div className="bg-[hsl(var(--widget-card))] border-b border-[hsl(var(--widget-border))] px-4 py-2 text-xs text-[hsl(var(--widget-fg))] leading-relaxed shrink-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin text-emerald-500 dark:text-emerald-400" />
@@ -1098,7 +1098,7 @@ export function ChatWidget({
             )}
 
             {llm.status === 'unsupported' && (
-              <div className="bg-sky-900/30 border-b border-sky-700/40 px-4 py-2 text-[11px] text-sky-200 leading-relaxed shrink-0">
+              <div className="bg-sky-900/30 border-b border-sky-700/40 px-4 py-2 text-xs text-sky-200 leading-relaxed shrink-0">
                 Your browser doesn't support local AI &mdash; using cloud mode.
                 {' '}
                 <a
@@ -1184,7 +1184,7 @@ export function ChatWidget({
                     after the first user turn. */}
                 {realTurns.length === 0 && (
                   <div
-                    className="mt-2 mx-1 flex items-start gap-2 rounded-md border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))] px-3 py-2 text-[11px] leading-snug text-[hsl(var(--widget-muted))]"
+                    className="mt-2 mx-1 flex items-start gap-2 rounded-md border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))] px-3 py-2 text-xs leading-snug text-[hsl(var(--widget-muted))]"
                     data-testid="empty-state-gear-hint"
                   >
                     <Settings className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
@@ -1203,7 +1203,7 @@ export function ChatWidget({
                     className="mt-2 flex flex-wrap gap-2 px-1"
                     data-testid="suggested-prompts"
                   >
-                    <span className="w-full text-[10px] tracking-wide text-[hsl(var(--widget-muted))] mb-1">
+                    <span className="w-full text-xs tracking-wide text-[hsl(var(--widget-muted))] mb-1">
                       Try asking
                     </span>
                     {suggestedPrompts.map((prompt) => (
@@ -1252,7 +1252,7 @@ export function ChatWidget({
             <div className="px-4 py-3 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))]">
               {pipe.effectiveBiasOptions.length > 1 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] tracking-wide text-[hsl(var(--widget-muted))] shrink-0">
+                  <span className="text-[11px] tracking-wide text-[hsl(var(--widget-muted))] shrink-0">
                     {pipe.biasSource === 'pipe' ? 'Perspective' : 'Audience'}
                   </span>
                   <BiasToggle

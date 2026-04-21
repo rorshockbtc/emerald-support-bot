@@ -56,28 +56,28 @@ export function PersonaCard({
         <button
           type="button"
           onClick={() => setImageOpen((v) => !v)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-2 hover-elevate"
+          className="w-full flex flex-col gap-1.5 px-4 py-2.5 hover-elevate text-left"
           aria-expanded={imageOpen}
           data-testid={`button-toggle-image-${persona.slug}`}
         >
-          <span className="chb-mono-label text-foreground truncate min-w-0">
-            {persona.shortName}
-          </span>
-          <span className="flex items-center gap-2 shrink-0">
-            <span
-              className={cn(
-                "chb-mono-label px-1.5 py-0.5 rounded border text-[10px]",
-                pillClass,
-              )}
-              data-testid={`badge-status-${persona.slug}`}
-            >
-              {pillLabel}
+          <div className="flex items-start justify-between gap-2">
+            <span className="chb-mono-label text-foreground leading-snug">
+              {persona.shortName}
             </span>
             {imageOpen ? (
-              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
             )}
+          </div>
+          <span
+            className={cn(
+              "chb-mono-label px-1.5 py-0.5 rounded border self-start",
+              pillClass,
+            )}
+            data-testid={`badge-status-${persona.slug}`}
+          >
+            {pillLabel}
           </span>
         </button>
 

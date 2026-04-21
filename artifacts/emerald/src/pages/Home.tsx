@@ -334,7 +334,7 @@ function Walkthrough() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {s.body}
               </p>
-              <p className="chb-mono-label text-[10px] text-pink-600 dark:text-pink-400">
+              <p className="chb-mono-label text-pink-600 dark:text-pink-400">
                 {s.audience}
               </p>
               <p className="text-xs text-foreground/70 italic leading-snug">
@@ -487,8 +487,8 @@ function CXCostSection() {
   const features = [
     {
       eyebrow: "The gear menu",
-      title: "Where the depth lives.",
-      body: "Q&A bank, OpenClaw BYO-LLM toggle, persona bias toggle, theme switch — all one click into the chat's settings. The hint inside the bot points first-time visitors there.",
+      title: "Where the bot's depth lives.",
+      body: "Q&A bank, OpenClaw BYO-LLM toggle, persona bias toggle, theme switch — all one click into the chat's settings. The hint inside the bot points first-time visitors there. In your bot, this feature is easily hidden to elevate the customer experience.",
     },
     {
       eyebrow: "Support-ticket export",
@@ -498,7 +498,7 @@ function CXCostSection() {
     },
     {
       eyebrow: "$0 / resolution",
-      title: "CAC is $400–$15k. Bot resolutions should be free.",
+      title: "CAC is $400–$15k. Bot resolutions should be free and high quality.",
       body: "Inference runs on the visitor's GPU. There is no per-message API cost to amortize against your acquisition spend, and no vendor sitting between you and your customers.",
     },
   ];
@@ -519,9 +519,9 @@ function CXCostSection() {
             <span className="text-pink-500">none of that</span>.
           </h2>
           <p className="text-base text-muted-foreground mt-3">
-            Modern helpdesks have moved to "outcome-based billing" — you
-            pay every time the AI does its job. That bill scales with
-            your success. Greater's runs on the visitor's device, so
+            Modern helpdesks have moved to outcome-based billing — you
+            pay every time the AI does its job, and sometimes even when it doesn't (SalesForce). That bill scales with
+            your success. Greater runs on the visitor's device, so
             the marginal cost of a resolution is zero.
           </p>
         </div>
@@ -641,13 +641,13 @@ function PersonasGrid() {
             One launch bot, five real-but-light demos.
           </h2>
           <p className="text-base text-muted-foreground mt-3 max-w-2xl">
-            FinTech is the launch demo &mdash; a full curated multi-thousand-snippet
+            FinTech is the launch demo &mdash; a more fully curated multi-thousand-snippet
             corpus, a Q&amp;A bank, and three bias variants you can toggle
             mid-conversation. The other five are the same architecture
             running on a small seed corpus: real persona, real prompts,
             real refusal behaviour. Each card links to the case study
             for the substantive narrative; the demo button opens the
-            bot itself.
+            bot itself. If you have a complex product ecosystem, you can maintain a core knowledge base for all products and then customize bot instances for each product.
           </p>
         </div>
 
