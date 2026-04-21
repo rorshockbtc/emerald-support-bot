@@ -3,26 +3,56 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronUp, ChevronDown } from "lucide-react";
 import { type Persona } from "@/data/personas";
+import { cn } from "@/lib/utils";
 
 const BASE = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL;
 
 /**
  * Persona card with a collapsible hero image and TWO pinned CTAs at
- * the bottom: "Try Demo" and "Read Case Study". Spec calls for both
- * buttons to remain visible regardless of collapse state.
+ * the bottom: "Try Demo" and "Read Case Study".
+ *
+ * `featured` renders the wider hero variant used for FinTech on the
+ * homepage: image left, copy right at lg+, with a "Live · Full corpus"
+ * pill instead of the secondary "Light demo" framing the others carry.
+ *
+ * Friend-review pre-launch: the previous Starter/Basic/Partial/Robust
+ * tiering read as marketing-grade ratings on otherwise comparable
+ * cards. Replaced with a single honest pill — FinTech is the only
+ * one with a full curated corpus, the other five are real-but-light
+ * demos that link to the case study for the substantive narrative.
  */
-export function PersonaCard({ persona }: { persona: Persona }) {
+export function PersonaCard({
+  persona,
+  featured = false,
+}: {
+  persona: Persona;
+  featured?: boolean;
+}) {
   const [imageOpen, setImageOpen] = useState(true);
-  const isLive = persona.demoStatus === "live";
-  const demoHref =
-    persona.slug === "fintech" ? "/demo/fintech" : `/demo/${persona.slug}`;
+  const isFintech = persona.slug === "fintech";
+  const demoHref = isFintech ? "/demo/fintech" : `/demo/${persona.slug}`;
+
+  const pillLabel = isFintech ? "Live · Full corpus" : "Light demo · See case study";
+  const pillClass = isFintech
+    ? "text-pink-600 dark:text-pink-400 border-pink-500/40 bg-pink-500/5"
+    : "text-muted-foreground border-border bg-secondary/40";
 
   return (
     <article
-      className="flex flex-col rounded-xl border border-card-border bg-card overflow-hidden"
+      className={cn(
+        "flex flex-col rounded-xl border bg-card overflow-hidden",
+        featured ? "border-pink-500/30 lg:flex-row" : "border-card-border",
+      )}
       data-testid={`card-persona-${persona.slug}`}
     >
-      <div className="border-b border-card-border">
+      <div
+        className={cn(
+          "border-card-border",
+          featured
+            ? "lg:w-1/2 lg:border-r lg:border-b-0 border-b"
+            : "border-b",
+        )}
+      >
         <button
           type="button"
           onClick={() => setImageOpen((v) => !v)}
@@ -30,38 +60,18 @@ export function PersonaCard({ persona }: { persona: Persona }) {
           aria-expanded={imageOpen}
           data-testid={`button-toggle-image-${persona.slug}`}
         >
-          <span className="chb-mono-label text-muted-foreground truncate min-w-0">
+          <span className="chb-mono-label text-foreground truncate min-w-0">
             {persona.shortName}
           </span>
-          <span className="flex items-center gap-2 flex-wrap justify-end shrink-0">
-            {/* Knowledge-base fullness badge. Honest signal so a
-                visitor doesn't expect a Robust answer from a Starter
-                corpus. The label is a single word ("Starter",
-                "Basic", "Partial", "Robust") so it works inside the
-                tight card chrome and matches the four-tier vocab on
-                the homepage intro. */}
-            {persona.kbStatus && (
-              <span
-                className="chb-mono-label px-1.5 py-0.5 rounded border border-border text-muted-foreground"
-                title={
-                  typeof persona.kbItems === "number"
-                    ? `Knowledge base: ${persona.kbItems} curated Q&A items, ${persona.kbStatus} tier`
-                    : `Knowledge base: ${persona.kbStatus}`
-                }
-                data-testid={`badge-kb-${persona.slug}`}
-              >
-                {typeof persona.kbItems === "number"
-                  ? `${persona.kbItems} items · ${persona.kbStatus}`
-                  : `KB: ${persona.kbStatus}`}
-              </span>
-            )}
+          <span className="flex items-center gap-2 shrink-0">
             <span
-              className="chb-mono-label"
-              style={{
-                color: isLive ? "#FE299E" : "hsl(var(--muted-foreground))",
-              }}
+              className={cn(
+                "chb-mono-label px-1.5 py-0.5 rounded border text-[10px]",
+                pillClass,
+              )}
+              data-testid={`badge-status-${persona.slug}`}
             >
-              {isLive ? "Live demo" : "Coming online"}
+              {pillLabel}
             </span>
             {imageOpen ? (
               <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -81,7 +91,7 @@ export function PersonaCard({ persona }: { persona: Persona }) {
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden bg-secondary/50"
             >
-              <div className="aspect-[16/9]">
+              <div className={featured ? "aspect-[4/3] lg:aspect-auto lg:h-full lg:min-h-[260px]" : "aspect-[16/9]"}>
                 <img
                   src={`${BASE}${persona.heroImage}`}
                   alt=""
@@ -94,11 +104,26 @@ export function PersonaCard({ persona }: { persona: Persona }) {
         </AnimatePresence>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="text-lg font-semibold leading-snug mb-2">
+      <div className={cn("p-5 flex-1 flex flex-col", featured && "lg:p-7")}>
+        {featured && (
+          <p className="chb-mono-eyebrow text-pink-600 dark:text-pink-400 mb-3">
+            Launch demo · {persona.name}
+          </p>
+        )}
+        <h3
+          className={cn(
+            "font-semibold leading-snug mb-2",
+            featured ? "text-xl sm:text-2xl" : "text-lg",
+          )}
+        >
           {persona.tagline}
         </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+        <p
+          className={cn(
+            "text-muted-foreground leading-relaxed",
+            featured ? "text-sm sm:text-base" : "text-sm line-clamp-3",
+          )}
+        >
           {persona.pain}
         </p>
 

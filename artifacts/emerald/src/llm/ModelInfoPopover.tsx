@@ -26,7 +26,7 @@ export function ModelInfoPopover() {
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-72 z-50 rounded-lg border border-[hsl(var(--widget-border))] bg-[hsl(220,13%,10%)] p-3 text-xs text-[hsl(var(--widget-fg))] shadow-2xl"
+          className="absolute right-0 top-full mt-2 w-72 z-50 rounded-lg border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-card))] p-3 text-xs text-[hsl(var(--widget-fg))] shadow-2xl"
           role="dialog"
         >
           <div className="font-semibold mb-2 text-sm">Local model</div>

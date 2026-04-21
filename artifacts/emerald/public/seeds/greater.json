@@ -223,12 +223,102 @@
     },
     {
       "source_url": "https://hire.colonhyphenbracket.pink/about#bot-depth",
-      "source_label": "Greater — Which industry bot is most robust?",
+      "source_label": "Greater — Which industry bot has the deepest corpus?",
       "bias": "neutral",
       "chunks": [
         {
           "chunk_index": 0,
-          "text": "Of the six industry persona templates (FinTech, Faith, Schools, Small Business, HealthTech, Startups), the FinTech / Blockstream / Bitcoin self-custody bot is the deepest. It's the one the developer dogfoods, ships with explicit-bias toggles between Bitcoin Core and Bitcoin Knots perspectives, and is fed by the writing at hash.pink. The other five are demonstration-grade: they prove the same engine adapts to different domains and ship with curated welcome flows and Q&A banks, but they don't have the same depth of source corpus. A real production deployment in any of those industries would commission a custom Pipe to deepen the corpus and tune the persona."
+          "text": "Of the six industry persona templates (FinTech, Faith, Schools, Small Business, HealthTech, Startups), the FinTech / Blockstream / Bitcoin self-custody bot is the launch demo and ships with the full curated corpus. It's the one the developer dogfoods, ships with explicit-bias toggles between Bitcoin Core and Bitcoin Knots perspectives, and is fed by the writing at hash.pink. The other five are real-but-light demos in the same architecture: real persona, real prompts, real refusal behaviour, but a small seed corpus until a pilot client commissions the full build-out. Every persona card on the homepage shows its status honestly — 'Live · Full corpus' for FinTech, 'Light demo · See case study' for the other five — so visitors aren't promised a depth that hasn't been authored yet."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/bots/fintech",
+      "source_label": "Greater — FinTech & Bitcoin persona case study",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "FinTech is the launch persona — sovereign support for an industry that takes 'do not trust, verify' seriously. Bitcoin and fintech users are paranoid about where their queries go, for good reason: most chat AI sends every keystroke to a third party. The Greater FinTech bot answers locally in your browser, refuses to ask for seed phrases or account credentials, and ships a full curated multi-thousand-snippet corpus on Bitcoin self-custody, fee markets, hardware wallet recovery, and incident playbooks. Three bias variants are togglable mid-conversation: customer (end-user / wallet holder), company (internal staff with KYC/AML constraints), and general (press / partners / outside inquiry)."
+        },
+        {
+          "chunk_index": 1,
+          "text": "The live FinTech demo is mounted as a Blockstream-branded support shell at /demo/fintech, demonstrating how the same Greater engine adapts to a regulated-vertical brand without leaking customer data to a vendor. It is the only one of the six personas with the full curated corpus shipped today; the case-study page at /bots/fintech walks through the architectural choices (in-browser inference, refusal behaviour around credentials, the Bitcoin Core vs Knots bias split). A regulated production deployment would still own KYC/AML plumbing, jurisdiction-specific record retention, and consumer-protection disclosures — Greater is the support-bot layer, not the regulated entity."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/bots/healthtech",
+      "source_label": "Greater — HealthTech persona case study",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "HealthTech is a support bot that respects HIPAA, says what it knows, and shuts up about what it does not. Generic AI chat in a healthcare context is a compliance liability; vendor-locked AI chat is a per-seat tax on a margin-thin business. The Greater HealthTech demo is a member-services bot for a health-share community that demonstrates the explicit medical-advice refusal: when a visitor asks for a diagnosis or a dose, the bot routes to a clinician instead of guessing. The FOSS shell makes no certification claims — a HIPAA-grade production deployment owns the BAA, the audit logging, encryption at rest, and access controls. Greater is a navigation aid, not a clinical decision-maker."
+        },
+        {
+          "chunk_index": 1,
+          "text": "The HealthTech demo is a real-but-light demo today: real persona, real refusal behaviour, real Q&A bank, but the curated corpus is small and the case study at /bots/healthtech is where the substantive narrative lives. A pilot deployment commissions the full build-out — typically: ingest the operator's clinical-policy library, wire the escalation path to the actual triage queue, and integrate with the member portal's auth so the bot can answer member-specific questions inside an authenticated session."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/bots/faith",
+      "source_label": "Greater — Faith-Based Organizations persona case study",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Faith is a confessional church support bot demonstrating explicit doctrinal posture. Years of YouTube and Rumble sermons, distinctive doctrine, and almost no way for a curious visitor to find a five-minute answer — that's the conversion problem most churches don't name. The Greater Faith demo shows the engine adapted to a Reformed Baptist church website: tone is warm but unambiguous, the bot speaks from the church's actual stated doctrine instead of an AI-vendor's fuzzy 'spiritual but not religious' default, and it routes pastoral-care questions to a real human via the escalation path. Christ-first by the author's conviction; the architecture itself is faith-agnostic."
+        },
+        {
+          "chunk_index": 1,
+          "text": "The two bias options on the Faith demo are 'visitor / member' (someone discerning whether to attend or join) and 'pastoral staff' (internal-process and doctrine-research lens). Same question, different answer — exactly the explicit-bias commitment the Greater architecture is built around. The Faith persona is a real-but-light demo today; the case study at /bots/faith walks through how a real church deployment would replace the seed corpus with a sermon-transcription pipeline plus the church's position papers, and integrate the escalation path into the existing pastoral-care intake."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/bots/schools",
+      "source_label": "Greater — Private Schools & Families persona case study",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Schools & Families is curated knowledge for institutions and families that care about what their kids learn. Private schools want granular control over the curriculum a chatbot speaks from. Families want certainty that the AI in the room won't drift into territory that violates their values. The Greater Schools demo is a classical-school admissions and parent-questions bot: tone is plain, the curriculum framing matches the school's stated philosophy, and the corpus is bounded by what the head of school approved instead of whatever the model's pretraining absorbed."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Two bias options on the Schools demo: 'parent / admin' (policy, schedule, enrollment) and 'student' (age-appropriate, plain language). Heads of school, deans of academic affairs, and curriculum directors are the audience for the case study at /bots/schools — also: families who run their household with the same intentionality and want the same control over what the AI in the room speaks from. The default Greater shell is free and open-source; the curated corpora and the integration into a specific school information system are the work that gets hired."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/bots/small-business",
+      "source_label": "Greater — Small Businesses persona case study",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Small Business is the chatbot a $50k-revenue local business could never afford until now. Generic mass-market chatbots are tuned for nothing; private AI is priced for the Fortune 500. There is no middle. The Greater Small Business demo is a real-estate office front desk: it answers listings questions, schedules viewings via the escalation path, and refuses to invent inventory it doesn't have access to. The case study at /bots/small-business names the market gap small businesses fall into — too small for a custom AI build, too distinctive to be served by a generic widget — and how the FOSS shell + a small Pipe closes it."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Two bias options on the Small Business demo: 'customer' (the prospective buyer / tenant) and 'staff' (the office's internal workflow lens). Like the other five non-FinTech personas, this is a real-but-light demo today; a real deployment commissions a Pipe that ingests the office's MLS feed, hours, agent contact info, and refusal scope (don't make legal claims, don't quote prices the agent hasn't approved). The point of the demo is not the corpus depth — it's that the architecture works at the small-business price point at all."
+        }
+      ]
+    },
+    {
+      "source_url": "https://hire.colonhyphenbracket.pink/bots/startups",
+      "source_label": "Greater — Startups persona case study",
+      "bias": "neutral",
+      "chunks": [
+        {
+          "chunk_index": 0,
+          "text": "Startups is for founders who are watching qualified leads bleed out of a 2023-grade chatbot. Customer acquisition costs are high, attention windows are short, and a generic chatbot can lose a $400-CAC visitor in eight seconds. The Greater Startups demo is a product-support bot for an early-stage SaaS — tone matches the brand, the corpus is the actual product docs and pricing page, and the bot refuses to invent features the product doesn't have. The case study at /bots/startups walks through why startups lose customers in the chat window and what the explicit-bias toggle (customer view vs founder view) does for retention versus visitor experience."
+        },
+        {
+          "chunk_index": 1,
+          "text": "Two bias options on the Startups demo: 'customer view' (prospective buyer evaluating pricing, fit, friction) and 'founder view' (the founder's lens — retention, cost-to-serve, contract terms, which docs need to change to remove visitor friction). The deliberate flip of those two perspectives on the same question is the most direct demonstration of why 'pretending to be neutral' is the worse failure mode for a product chatbot. Real-but-light demo today; a pilot deployment commissions a Pipe that ingests the actual product docs, pricing, and support history, and integrates with the existing helpdesk so escalations land in the same queue the human team is already watching."
         }
       ]
     },

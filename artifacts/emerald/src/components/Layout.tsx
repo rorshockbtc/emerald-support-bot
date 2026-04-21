@@ -1,10 +1,14 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Home as HomeIcon, Layers, Info, MessageSquare, Github } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useContact } from "@/components/ContactContext";
 import { cn } from "@/lib/utils";
+import { ChatWidget } from "@/components/ChatWidget";
+import { PipeProvider } from "@/pipes/PipeContext";
+import { useLLM } from "@/llm/LLMProvider";
+import { GREATER_META_BOT } from "@/data/greater-meta-bot";
 
 const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/", label: "Home" },
@@ -67,7 +71,50 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <Footer onContact={openContact} />
 
       <BottomNav location={location} onContact={openContact} />
+
+      {/*
+        Greater meta-bot — the dogfooding chat widget. Lifted from
+        Home.tsx so it's available on every Greater-shell marketing
+        page (Home, About, How it works, /bots/:slug, etc). It's
+        intentionally NOT mounted on persona demo routes — those
+        live outside <Layout> in App.tsx and ship their own widget
+        scoped to that persona's corpus. PipeProvider is required
+        because ChatWidget calls usePipe(); the "greater" persona
+        has no Pipe, so the provider falls back to biasSource="none"
+        and renders without a bias selector.
+      */}
+      <PipeProvider persona="greater">
+        <MetaBotMount />
+      </PipeProvider>
     </div>
+  );
+}
+
+/**
+ * Inner component that requests the meta-bot seed bundle on mount
+ * and renders the dogfood ChatWidget. Split from Layout so the
+ * useEffect runs once when Layout mounts, not on every route change.
+ * The provider serializes installs behind embedder readiness and
+ * dedupes via `installedBundleSlugsRef`, so a re-run is a cheap no-op.
+ */
+function MetaBotMount() {
+  const llm = useLLM();
+  useEffect(() => {
+    llm.requestSeedBundle("greater");
+  }, [llm]);
+
+  return (
+    <ChatWidget
+      personaSlug={GREATER_META_BOT.slug}
+      personaBrand={GREATER_META_BOT.brand}
+      personaSystemPrompt={GREATER_META_BOT.systemPrompt}
+      refusalScope={GREATER_META_BOT.refusalScope}
+      personaExampleTopics={[...GREATER_META_BOT.exampleTopics]}
+      suggestedPrompts={[...GREATER_META_BOT.suggestedPrompts]}
+      welcomeMessage={GREATER_META_BOT.welcome}
+      placeholder={GREATER_META_BOT.placeholder}
+      bundleLabel="Greater meta-bot corpus"
+    />
   );
 }
 

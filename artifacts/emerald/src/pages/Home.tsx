@@ -1,63 +1,28 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useLLM } from "@/llm/LLMProvider";
-import { ArrowRight, Lock, Cpu, FileText, AlertCircle, MessageSquare, Github } from "lucide-react";
+import { ArrowRight, Lock, Cpu, FileText, AlertCircle, MessageSquare, Github, Globe, Sliders, Wrench } from "lucide-react";
 import { personas } from "@/data/personas";
 import { PersonaCard } from "@/components/PersonaCard";
 import { ContactCTASection } from "@/components/ContactCTASection";
-import { ChatWidget } from "@/components/ChatWidget";
-import { PipeProvider } from "@/pipes/PipeContext";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import heroImage from "@/assets/greater-hero.png";
-import { GREATER_META_BOT } from "@/data/greater-meta-bot";
 
 export default function Home() {
   // Preserve the static index.html <title> on /.
   useDocumentTitle(null);
-  // Queue the meta-bot seed bundle on mount, mirroring how
-  // BlockstreamDemo + PersonaDemoShell trigger their own corpora.
-  // The provider serializes installs behind the embedder readiness,
-  // so it's safe to call before the model is loaded; effect re-runs
-  // are de-duped by `installedBundleSlugsRef` inside the provider.
-  const llm = useLLM();
-  useEffect(() => {
-    llm.requestSeedBundle("greater");
-  }, [llm]);
+  // The meta-bot widget is mounted globally in <Layout>, so every
+  // marketing page (Home, About, /bots/:slug, etc.) shows it. Friend
+  // review pre-launch: previously it was Home-only, which meant a
+  // visitor who clicked through to a case study lost the "ask me
+  // about this thing" affordance.
   return (
     <>
       <Hero />
       <PrinciplesStrip />
+      <Walkthrough />
       <PersonasGrid />
       <ContactCTASection tone="muted" />
-      {/*
-        Greater meta-bot — the dogfooding chat widget. Same engine,
-        same UI, same persona-scoped retrieval as the industry demos;
-        only the corpus and system prompt differ. Pinned bottom-right
-        so visitors who land on the marketing page can ask "how does
-        this actually work?" without leaving the page.
-      */}
-      {/*
-        ChatWidget calls usePipe(), so it must mount inside a
-        PipeProvider. The "greater" persona has no Pipe registered
-        (and no persona-default bias) — getActivePipe returns null
-        and the provider falls back to biasSource="none", which
-        renders the widget without a bias selector. That's exactly
-        what we want for the meta-bot: no toggles, just answers.
-      */}
-      <PipeProvider persona="greater">
-        <ChatWidget
-          personaSlug={GREATER_META_BOT.slug}
-          personaBrand={GREATER_META_BOT.brand}
-          personaSystemPrompt={GREATER_META_BOT.systemPrompt}
-          refusalScope={GREATER_META_BOT.refusalScope}
-          personaExampleTopics={[...GREATER_META_BOT.exampleTopics]}
-          suggestedPrompts={[...GREATER_META_BOT.suggestedPrompts]}
-          welcomeMessage={GREATER_META_BOT.welcome}
-          placeholder={GREATER_META_BOT.placeholder}
-          bundleLabel="Greater meta-bot corpus"
-        />
-      </PipeProvider>
     </>
   );
 }
@@ -289,7 +254,117 @@ function PrinciplesStrip() {
   );
 }
 
+function Walkthrough() {
+  // Three-step tour of what makes Greater concretely different from
+  // a generic chatbot. Friend-review feedback ("Jay's tour"): without
+  // an explicit walkthrough, visitors don't realise the bottom-right
+  // chat is a real demo of the same engine, the bias toggle is a
+  // real product feature, and OpenClaw / NOSTR / in-browser are real
+  // commitments — they read as marketing nouns.
+  const steps = [
+    {
+      icon: MessageSquare,
+      eyebrow: "Step 1",
+      title: "Open the bot in the corner.",
+      body: "It runs in your browser, not on a server. The first message takes a moment because the model and the corpus are downloading — every message after that is local.",
+      cta: { label: "Watch the loading state", href: "/how-it-works" },
+    },
+    {
+      icon: Sliders,
+      eyebrow: "Step 2",
+      title: "Flip the bias toggle.",
+      body: "Each persona ships its own perspective options — customer view, founder view, member view. Same question, different answer, on purpose. Generic chatbots pretend neutrality; ours names where it stands.",
+      cta: { label: "Try the FinTech demo", href: "/demo/fintech" },
+    },
+    {
+      icon: Wrench,
+      eyebrow: "Step 3",
+      title: "Make it yours, three ways.",
+      body: "Fork the MIT shell on GitHub, swap your own LLM in via OpenClaw (BYO local model), or ping me to build a curated Pipe with persona-tuned weights for your domain.",
+      cta: { label: "OpenClaw &middot; NOSTR &middot; the Pipe", href: "/openclaw" },
+    },
+  ];
+  return (
+    <section
+      id="walkthrough"
+      className="border-b border-border"
+      data-testid="section-walkthrough"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="mb-10 max-w-2xl">
+          <p className="chb-mono-eyebrow text-muted-foreground mb-2">
+            A 30-second tour
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+            Three things to do before you decide whether this is real.
+          </h2>
+          <p className="text-base text-muted-foreground mt-3">
+            The shortest path from "another AI demo" to "okay, this is
+            architecturally different."
+          </p>
+        </div>
+        <ol className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {steps.map((s, i) => (
+            <li
+              key={s.eyebrow}
+              className="flex flex-col gap-3 rounded-xl border border-border bg-secondary/40 p-5"
+              style={
+                i === 1 ? { transform: "translateY(8px)" } : undefined
+              }
+              data-testid={`walkthrough-step-${i + 1}`}
+            >
+              <div className="flex items-center gap-2">
+                <s.icon
+                  className="w-5 h-5"
+                  style={{ color: "#01a9f4" }}
+                  aria-hidden="true"
+                />
+                <p className="chb-mono-eyebrow text-muted-foreground">
+                  {s.eyebrow}
+                </p>
+              </div>
+              <h3 className="text-lg font-semibold leading-snug">
+                {s.title}
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {s.body}
+              </p>
+              <div className="mt-auto pt-2">
+                <Link
+                  href={s.cta.href}
+                  className="chb-mono-label text-foreground hover:text-pink-500 inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                  data-testid={`walkthrough-step-${i + 1}-cta`}
+                >
+                  <span dangerouslySetInnerHTML={{ __html: s.cta.label }} />
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <p className="mt-8 text-sm text-muted-foreground max-w-3xl">
+          The chat in the corner is the meta-bot — same engine, same UI,
+          same persona-scoped retrieval as the industry demos. Its corpus
+          is just this site itself, so you can ask it{" "}
+          <em>"how does this actually work?"</em> and get a grounded
+          answer with citations.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function PersonasGrid() {
+  // FinTech is the launch bot — full curated corpus, three bias
+  // variants, real Bitcoin Q&A. It earns the wide hero card. The
+  // other five are real-but-light demos in the same architecture
+  // and live in a tighter secondary grid below. This intentionally
+  // breaks the pre-launch "six identical cards" shape, which read
+  // as "six interchangeable starters" — the friend-review note that
+  // triggered this whole pass.
+  const fintech = personas.find((p) => p.slug === "fintech");
+  const others = personas.filter((p) => p.slug !== "fintech");
   return (
     <section id="personas" className="py-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -298,21 +373,27 @@ function PersonasGrid() {
             Six industries / six bots
           </p>
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight max-w-3xl">
-            Each card is a real product surface, not a placeholder.
+            One launch bot, five real-but-light demos.
           </h2>
           <p className="text-base text-muted-foreground mt-3 max-w-2xl">
-            One bot is shipped end-to-end today &mdash; FinTech &amp; Bitcoin,
-            with a curated multi-thousand-snippet corpus, a Q&amp;A bank, and
-            three bias variants you can toggle mid-conversation. The other
-            five cards are the same architecture in Starter shape: real
-            persona, real prompts, a small seed corpus, and a clearly marked
-            holding page until a pilot client commissions the full build-out.
-            The badge on each card tells you exactly where it stands.
+            FinTech is the launch demo &mdash; a full curated multi-thousand-snippet
+            corpus, a Q&amp;A bank, and three bias variants you can toggle
+            mid-conversation. The other five are the same architecture
+            running on a small seed corpus: real persona, real prompts,
+            real refusal behaviour. Each card links to the case study
+            for the substantive narrative; the demo button opens the
+            bot itself.
           </p>
         </div>
 
+        {fintech && (
+          <div className="mb-8">
+            <PersonaCard persona={fintech} featured />
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {personas.map((p) => (
+          {others.map((p) => (
             <PersonaCard key={p.slug} persona={p} />
           ))}
         </div>

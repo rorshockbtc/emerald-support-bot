@@ -1064,17 +1064,17 @@ export function ChatWidget({
             </AnimatePresence>
 
             {llm.bundleProgress && !llm.bundleProgress.done && (
-              <div className="bg-emerald-900/30 border-b border-emerald-700/40 px-4 py-2 text-[11px] text-emerald-100 leading-relaxed shrink-0">
+              <div className="bg-[hsl(var(--widget-card))] border-b border-[hsl(var(--widget-border))] px-4 py-2 text-[11px] text-[hsl(var(--widget-fg))] leading-relaxed shrink-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="flex items-center gap-1.5">
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-3 h-3 animate-spin text-emerald-500 dark:text-emerald-400" />
                     Loading {bundleLabel ?? 'Bitcoin knowledge bundle'} into your browser…
                   </span>
-                  <span className="tabular-nums text-emerald-200/80">
+                  <span className="tabular-nums text-[hsl(var(--widget-muted))]">
                     {llm.bundleProgress.done_chunks}/{llm.bundleProgress.total_chunks}
                   </span>
                 </div>
-                <div className="h-1 bg-white/5 rounded overflow-hidden">
+                <div className="h-1 bg-[hsl(var(--widget-muted))]/20 rounded overflow-hidden">
                   <div
                     className="h-full bg-emerald-500 transition-all"
                     style={{
@@ -1201,7 +1201,7 @@ export function ChatWidget({
                           void handleSend(prompt);
                         }}
                         disabled={isPending}
-                        className="text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-200 hover:bg-emerald-500/10 hover:border-emerald-400/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs px-3 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
                         data-testid={`button-suggested-prompt-${prompt.slice(0, 16).replace(/\W+/g, '-').toLowerCase()}`}
                       >
                         {prompt}
@@ -1285,7 +1285,7 @@ export function ChatWidget({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#1a1c20] hover:bg-[#25282d] text-white shadow-xl flex items-center justify-center transition-colors border border-white/10"
+            className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#01a9f4] hover:bg-[#0394d8] text-white shadow-xl flex items-center justify-center transition-colors border border-white/15"
             aria-label="Open chat"
           >
             <MessageSquare className="w-6 h-6" />
@@ -1301,7 +1301,7 @@ export function ChatWidget({
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed bottom-6 right-6 z-[49] w-14 h-14 rounded-full bg-[#1a1c20] hover:bg-[#25282d] text-white shadow-xl flex items-center justify-center transition-colors border border-white/10"
+              className="fixed bottom-6 right-6 z-[49] w-14 h-14 rounded-full bg-[#01a9f4] hover:bg-[#0394d8] text-white shadow-xl flex items-center justify-center transition-colors border border-white/15"
               style={{ transform: 'translateY(580px)' }}
               aria-label="Close chat"
             >
