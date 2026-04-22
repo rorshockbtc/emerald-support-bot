@@ -481,6 +481,16 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
   };
   const pendingRef = useRef<Map<string, Pending>>(new Map());
 
+  /**
+   * Active telemetry listener for the current inference turn. The
+   * Glass Engine terminal panel registers a callback via `AskOptions`
+   * and the provider routes all telemetry events (from both the main
+   * thread and the worker) to it for the duration of that turn. Cleared
+   * at the end of each turn so stale listeners don't receive cross-turn
+   * events.
+   */
+  const telemetryListenerRef = useRef<((tag: string, text: string) => void) | null>(null);
+
   const callWorker = useCallback(
     <T,>(
       type: "embed" | "generate",
@@ -931,6 +941,8 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             p.resolve((msg as GenerateResult).text);
             pendingRef.current.delete(msg.id);
           }
+        } else if (msg.type === "telemetry") {
+          telemetryListenerRef.current?.(msg.tag, msg.text);
         }
       };
       w.onerror = (e) => {
@@ -1098,11 +1110,14 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
+      options?.onTelemetry?.("[OpenClaw]", `Forwarding to local endpoint ${baseUrl} (model: ${cfg.model})…`);
+
       // Only run retrieval when the embedder is up. status === 'ready'
       // means both stages done; 'loading-llm' means embedder ready and
       // LLM still downloading — in either case retrieval is available.
       let retrieved: RetrievedChunk[] = [];
       if (status === "ready" || status === "loading-llm") {
+        options?.onTelemetry?.("[VectorStore]", "Retrieving context chunks for OpenClaw prompt…");
         try {
           const queryVec = await callWorker<number[]>("embed", {
             text: userMessage,
@@ -1111,11 +1126,20 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             biasFilter: options?.biasFilter,
             personaScope: options?.personaSlug,
           });
+          retrieved.forEach((c, i) => {
+            options?.onTelemetry?.(
+              "[VectorStore]",
+              `Chunk #${i + 1} sim=${c.score.toFixed(3)} source="${c.page_label}"`,
+            );
+          });
         } catch {
           // Retrieval failure should NOT block the OpenClaw call —
           // the BYO model is still useful without grounding.
+          options?.onTelemetry?.("[VectorStore]", "Retrieval failed — proceeding without context");
           retrieved = [];
         }
+      } else {
+        options?.onTelemetry?.("[VectorStore]", "Embedder not ready — skipping retrieval for OpenClaw");
       }
 
       const baseSystemPrompt =
@@ -1352,6 +1376,12 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
 
   const ask = useCallback<LLMContextValue["ask"]>(
     async (history, userMessage, options) => {
+      // Register the caller's telemetry listener for this turn so both
+      // the main-thread emit calls below and the worker's structured
+      // messages flow into the same channel.
+      telemetryListenerRef.current = options?.onTelemetry ?? null;
+
+      try {
       // OpenClaw takes precedence over both the in-browser model and
       // the cloud fallback when the user has opted in and the health
       // check passed. This is the whole point of "Bring Your Own LLM".
@@ -1369,6 +1399,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // hallucination) AND the cost lever (zero model tokens spent).
       // Skipped silently when no slug, no bank, or no embedder.
       if (options?.personaSlug) {
+        options.onTelemetry?.("[QACache]", `Checking curated bank for persona "${options.personaSlug}"…`);
         try {
           const hit = await lookupCachedAnswerRef.current?.(
             userMessage,
@@ -1377,6 +1408,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             options.biasId,
           );
           if (hit) {
+            options.onTelemetry?.("[QACache]", `Cache hit — cosine ${hit.score.toFixed(3)} (threshold 0.72)`);
             return {
               text: hit.answer,
               source: "qa-cache",
@@ -1385,16 +1417,20 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
                 reasoning: `Matched curated Q&A bank for "${options.personaSlug}" (cosine ${hit.score.toFixed(3)}).`,
               },
             };
+          } else {
+            options.onTelemetry?.("[QACache]", "Cache miss — falling through to RAG");
           }
         } catch (err) {
           // Cache lookup failures must NEVER break the chat — fall
           // through to model inference.
+          options.onTelemetry?.("[QACache]", "Cache lookup error — skipping");
           console.warn("[LLMProvider] qa-cache lookup failed:", err);
         }
       }
       if (status !== "ready") {
         throw new Error("Local model not ready");
       }
+      options?.onTelemetry?.("[VectorStore]", `Retrieving top-5 chunks for query…`);
       const queryVec = await callWorker<number[]>("embed", {
         text: userMessage,
       });
@@ -1421,6 +1457,18 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         lexicalTopK(userMessage, 5, retrievalOptions),
       ]);
       const retrieved = fuseRetrievals(semantic, lexical, 5);
+
+      // Emit per-chunk telemetry for the terminal panel.
+      if (retrieved.length === 0) {
+        options?.onTelemetry?.("[VectorStore]", "No chunks matched — will hard-refuse");
+      } else {
+        retrieved.forEach((c, i) => {
+          options?.onTelemetry?.(
+            "[VectorStore]",
+            `Chunk #${i + 1} sim=${c.score.toFixed(3)} source="${c.page_label}"`,
+          );
+        });
+      }
 
       // Tiered grounding. The earlier binary refuse-or-answer gate at
       // 0.35 cosine was too aggressive: legitimate paraphrases of
@@ -1467,6 +1515,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         const scope =
           options?.refusalScope ??
           "the topics in this bot's curated knowledge base";
+        options?.onTelemetry?.("[VectorStore]", `Hard refusal — top score ${topScore.toFixed(3)} below 0.18 threshold`);
         // Graceful off-script reframe (replaces the older
         // wall-of-text refusal). Friend feedback before launch:
         // the previous copy read like a system error and made the
@@ -1495,6 +1544,12 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
                 : `Hard refusal: top chunk score ${topScore.toFixed(3)} < ${HARD_REFUSAL_THRESHOLD} threshold.`,
           },
         };
+      }
+
+      if (isWeakContext) {
+        options?.onTelemetry?.("[VectorStore]", `Weak context — top score ${topScore.toFixed(3)} (0.18–0.38 band), proceeding with rider`);
+      } else {
+        options?.onTelemetry?.("[VectorStore]", `Confident context — top score ${topScore.toFixed(3)}`);
       }
 
       const context = formatRetrievedForPrompt(retrieved);
@@ -1576,6 +1631,11 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           : summarizeRetrieval(retrieved),
       };
       return { text, source: "local", thoughtTrace: trace };
+      } finally {
+        // Clear the listener after the turn so stale callbacks from
+        // a previous session don't receive events from the next one.
+        telemetryListenerRef.current = null;
+      }
     },
     [status, callWorker, askViaOpenClaw],
   );

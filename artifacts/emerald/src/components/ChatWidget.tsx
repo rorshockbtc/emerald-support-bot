@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen, Sun, Moon, Code2, Mail, ScrollText } from 'lucide-react';
+import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen, Sun, Moon, Code2, Mail, ScrollText, Terminal, Circle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
 import { ChatMessage, type MessageProps } from './ChatMessage';
@@ -9,6 +9,7 @@ import { KnowledgePanel } from './KnowledgePanel';
 import { QaBankPanel } from './QaBankPanel';
 import { OpenClawPanel } from './OpenClawPanel';
 import { HarnessPanel } from './HarnessPanel';
+import { TerminalPanel, type TerminalLogLine } from './TerminalPanel';
 import { PipeStatusPanel } from './PipeStatusPanel';
 import { BiasToggle } from './BiasToggle';
 import { DisclaimerBanner } from './DisclaimerBanner';
@@ -183,6 +184,42 @@ export function ChatWidget({
   const [showPipePanel, setShowPipePanel] = useState(false);
   const [showOpenClawPanel, setShowOpenClawPanel] = useState(false);
   const [showHarnessPanel, setShowHarnessPanel] = useState(false);
+  const [showTerminalPanel, setShowTerminalPanel] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('greater:terminal:enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('greater:terminal:enabled', String(showTerminalPanel));
+    } catch {
+      // best-effort
+    }
+  }, [showTerminalPanel]);
+  const terminalLinesRef = useRef<TerminalLogLine[]>([]);
+  const terminalLineCounterRef = useRef(0);
+  const [terminalLines, setTerminalLines] = useState<TerminalLogLine[]>([]);
+  const MAX_TERMINAL_LINES = 200;
+
+  const appendTerminalLine = useCallback((tag: string, text: string) => {
+    const now = new Date();
+    const ts = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
+    const line: TerminalLogLine = {
+      id: terminalLineCounterRef.current++,
+      ts,
+      tag,
+      text,
+    };
+    terminalLinesRef.current = [
+      ...terminalLinesRef.current,
+      line,
+    ].slice(-MAX_TERMINAL_LINES);
+    setTerminalLines([...terminalLinesRef.current]);
+  }, []);
   // Local Harness charter — user-authored text read from localStorage and
   // threaded into every llm.ask() call as the outermost system-prompt frame.
   // Keyed by persona so different bots carry different harnesses independently.
@@ -575,6 +612,11 @@ export function ChatWidget({
       if (harnessText.trim()) {
         askOptions = { ...(askOptions ?? {}), harnessText };
       }
+      // Glass Engine terminal: pipe telemetry to the log buffer so
+      // the terminal panel shows live events. The callback is always
+      // wired (not gated on panel visibility) so the buffer is already
+      // populated when the visitor opens the panel mid-turn.
+      askOptions = { ...(askOptions ?? {}), onTelemetry: appendTerminalLine };
       const askStart = performance.now();
       const answer = await llm.ask(history, userText, askOptions);
       const askLatency = Math.round(performance.now() - askStart);
@@ -956,6 +998,22 @@ export function ChatWidget({
                     <TooltipContent side="bottom">What&apos;s this demo?</TooltipContent>
                   </Tooltip>
                 )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowTerminalPanel(true)}
+                      className="relative p-1.5 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] transition-colors"
+                      aria-label="Glass Engine live logs"
+                      data-testid="button-terminal"
+                    >
+                      <Terminal className="w-4 h-4" />
+                      {isLocalGenerating && (
+                        <Circle className="absolute top-0.5 right-0.5 w-2 h-2 fill-emerald-400 text-emerald-400 animate-pulse" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Glass Engine (live logs)</TooltipContent>
+                </Tooltip>
                 <ModelInfoPopover />
                 <DropdownMenu>
                   {/*
@@ -1003,6 +1061,18 @@ export function ChatWidget({
                     >
                       <ScrollText className="w-3.5 h-3.5 mr-2" />
                       Local Harness (system charter)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setShowTerminalPanel(true)}
+                      data-testid="menuitem-terminal"
+                    >
+                      <Terminal className="w-3.5 h-3.5 mr-2" />
+                      Glass Engine (live logs)
+                      {terminalLines.length > 0 && (
+                        <span className="ml-auto text-[10px] tabular-nums text-[hsl(var(--widget-muted))]">
+                          {terminalLines.length}
+                        </span>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!ticketPreviewEnabled}
@@ -1401,6 +1471,17 @@ export function ChatWidget({
         onClose={() => setShowHarnessPanel(false)}
         personaSlug={personaSlug ?? "default"}
         onHarnessChange={setHarnessText}
+      />
+
+      <TerminalPanel
+        isOpen={showTerminalPanel}
+        onClose={() => setShowTerminalPanel(false)}
+        lines={terminalLines}
+        isActive={isLocalGenerating}
+        onClear={() => {
+          terminalLinesRef.current = [];
+          setTerminalLines([]);
+        }}
       />
 
       {/*

@@ -124,10 +124,47 @@ async function handleGenerate(
   maxNewTokens: number,
 ) {
   if (!llm) throw new Error("LLM not ready");
+  send({
+    type: "telemetry",
+    tag: "[WebGPU]",
+    text: `Starting generation (max ${maxNewTokens} tokens)…`,
+  });
+  const genStart = Date.now();
+  let firstTokenMs: number | null = null;
+  let tokenCount = 0;
   const out = await llm(messages, {
     max_new_tokens: maxNewTokens,
     do_sample: false,
     return_full_text: false,
+    // Transformers.js v3 accepts a callback_function for streaming.
+    // We emit a telemetry ping on the first token so the terminal
+    // panel shows "first token in Xms" as it happens, then a light
+    // per-token count so the panel scrolls. We do NOT emit the raw
+    // token text so the system prompt is never visible in the UI.
+    callback_function: (_: unknown) => {
+      tokenCount += 1;
+      if (firstTokenMs === null) {
+        firstTokenMs = Date.now() - genStart;
+        send({
+          type: "telemetry",
+          tag: "[WebGPU]",
+          text: `First token in ${firstTokenMs}ms`,
+        });
+      }
+      if (tokenCount % 10 === 0) {
+        send({
+          type: "telemetry",
+          tag: "[WebGPU]",
+          text: `Generating… token ${tokenCount}`,
+        });
+      }
+    },
+  });
+  const totalMs = Date.now() - genStart;
+  send({
+    type: "telemetry",
+    tag: "[WebGPU]",
+    text: `Done — ${tokenCount} tokens in ${totalMs}ms (${(tokenCount / (totalMs / 1000)).toFixed(1)} tok/s)`,
   });
   send({ type: "generateResult", id, text: extractAssistantText(out).trim() });
 }

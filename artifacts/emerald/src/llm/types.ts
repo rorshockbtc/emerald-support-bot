@@ -247,13 +247,28 @@ export interface GenerateResult {
   text: string;
 }
 
+/**
+ * Structured telemetry event emitted by the worker or by the main-
+ * thread provider during an inference turn. Consumed by the Glass
+ * Engine terminal panel to show live inference activity.
+ *
+ * `tag`  — bracketed source label, e.g. "[WebGPU]", "[VectorStore]".
+ * `text` — human-readable event description (no raw prompt text).
+ */
+export interface TelemetryEvent {
+  type: "telemetry";
+  tag: string;
+  text: string;
+}
+
 export type WorkerInbound = { type: "init" } | EmbedRequest | GenerateRequest;
 export type WorkerOutbound =
   | ProgressEvent
   | ReadyEvent
   | ErrorEvent
   | EmbedResult
-  | GenerateResult;
+  | GenerateResult
+  | TelemetryEvent;
 
 /* ---------- Provider-facing API ---------- */
 
@@ -347,4 +362,11 @@ export interface AskOptions {
    * Trimmed before use; empty string / undefined → no-op.
    */
   harnessText?: string;
+  /**
+   * Optional callback invoked for each structured telemetry event
+   * during an inference turn (QA-cache check, vector retrieval,
+   * WebGPU generation start/done, OpenClaw dispatch). Driving the
+   * Glass Engine terminal panel. Never receives raw prompt text.
+   */
+  onTelemetry?: (tag: string, text: string) => void;
 }
