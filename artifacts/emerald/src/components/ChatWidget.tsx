@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen, Sun, Moon, Code2, Mail, ScrollText, Terminal, Circle } from 'lucide-react';
+import { MessageSquare, Send, Bot, Loader2, ChevronDown, Maximize2, Minimize2, ShieldCheck, PhoneCall, AlertOctagon, CircleDashed, Settings, Database, Cable, Info, Ticket, Cpu, BookOpen, Sun, Moon, Code2, Mail, ScrollText, Terminal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSendMessage, useEscalateTicket } from '@workspace/api-client-react';
 import { ChatMessage, type MessageProps } from './ChatMessage';
@@ -1008,8 +1008,15 @@ export function ChatWidget({
                       data-testid="button-terminal"
                     >
                       <Terminal className="w-4 h-4" />
-                      {isLocalGenerating && (
-                        <Circle className="absolute top-0.5 right-0.5 w-2 h-2 fill-emerald-400 text-emerald-400 animate-pulse" />
+                      {terminalLines.length > 0 && (
+                        <span
+                          className={cn(
+                            "absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full text-[9px] font-bold tabular-nums flex items-center justify-center leading-none bg-emerald-500 text-black select-none",
+                            isLocalGenerating && "animate-pulse",
+                          )}
+                        >
+                          {terminalLines.length > 99 ? "99+" : terminalLines.length}
+                        </span>
                       )}
                     </button>
                   </TooltipTrigger>
