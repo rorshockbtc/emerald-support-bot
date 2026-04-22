@@ -194,6 +194,17 @@ export function ChatWidget({
       return "";
     }
   });
+  // Reload harness from localStorage whenever the visitor navigates to a
+  // different persona — each bot is scoped independently so the wrong
+  // charter is never injected after a persona switch.
+  useEffect(() => {
+    if (!personaSlug) { setHarnessText(""); return; }
+    try {
+      setHarnessText(localStorage.getItem(`greater:harness:${personaSlug}`) ?? "");
+    } catch {
+      setHarnessText("");
+    }
+  }, [personaSlug]);
   const [hasSecurityAlertSession, setHasSecurityAlertSession] = useState(false);
   /**
    * Escalation preview dialog state. Clicking the phone icon used to

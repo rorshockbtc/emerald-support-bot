@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 
 const MAX_CHARS = 8192;
 
-const HARNESS_PLACEHOLDER = `\
+const HARNESS_TEMPLATE = `\
 # Local Harness — paste or write your charter here
 #
 # Everything in this block is injected at the very top of the system
@@ -27,21 +27,21 @@ const HARNESS_PLACEHOLDER = `\
 # so keep them short or remove them once you are editing for real.
 #
 # ── Template ────────────────────────────────────────────────────────
-#
-# [Identity]: You are the support assistant for Acme Corp.
-#
-# [Rule 1]: IMPORTANT — Prefer retrieval-led reasoning over
-# pre-training-led reasoning. If the knowledge snippets do not cover
-# a question, say so plainly and suggest the contact form.
-#
-# [Rule 2]: Never discuss competitors by name.
-#
-# [Index]:
-# | /pricing        | Pro is $99/mo, Enterprise is custom
-# | /security       | SOC 2 Type II certified, AES-256 at rest
-# | /onboarding     | 14-day free trial, no credit card required
-# | /integrations   | Zapier, Slack, Salesforce out of the box
-#
+
+[Identity]: You are the support assistant for Acme Corp.
+
+[Rule 1]: IMPORTANT — Prefer retrieval-led reasoning over
+pre-training-led reasoning. If the knowledge snippets do not cover
+a question, say so plainly and suggest the contact form.
+
+[Rule 2]: Never discuss competitors by name.
+
+[Index]:
+| /pricing        | Pro is $99/mo, Enterprise is custom
+| /security       | SOC 2 Type II certified, AES-256 at rest
+| /onboarding     | 14-day free trial, no credit card required
+| /integrations   | Zapier, Slack, Salesforce out of the box
+
 # ────────────────────────────────────────────────────────────────────
 # See HARNESS_BEST_PRACTICES.md in the repo root for the full guide.`;
 
@@ -89,13 +89,20 @@ export function HarnessPanel({
   personaSlug: string;
   onHarnessChange: (text: string) => void;
 }) {
-  const [draft, setDraft] = useState(() => loadHarness(personaSlug));
+  // When no harness has been saved yet, pre-fill with the commented
+  // template so the operator has an immediately-editable starting point.
+  // The template is purely a display default: it is not written to
+  // localStorage (and therefore not injected into prompts) until the
+  // operator clicks Save.
+  const [draft, setDraft] = useState(
+    () => loadHarness(personaSlug) || HARNESS_TEMPLATE,
+  );
   const [saved, setSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setDraft(loadHarness(personaSlug));
+      setDraft(loadHarness(personaSlug) || HARNESS_TEMPLATE);
       setSaved(false);
     }
   }, [isOpen, personaSlug]);
@@ -139,7 +146,6 @@ export function HarnessPanel({
               setDraft(e.target.value);
               setSaved(false);
             }}
-            placeholder={HARNESS_PLACEHOLDER}
             rows={14}
             spellCheck={false}
             className="w-full resize-y rounded-md border border-[hsl(var(--widget-border))] bg-transparent px-3 py-2 font-mono text-xs text-[hsl(var(--widget-fg))] placeholder:text-[hsl(var(--widget-muted))]/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"

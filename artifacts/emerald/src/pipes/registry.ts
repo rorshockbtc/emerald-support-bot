@@ -43,31 +43,36 @@ export function isGreaterMode(persona: PipePersona): boolean {
 }
 
 /**
- * connectPipe — future hot-load entry-point for runtime Pipe mounting.
+ * connectPipe — resolve the active Pipe for a known demo persona slug.
  *
- * Today, Pipes are inlined at build time via the `greater-pipes-loader`
- * Vite plugin. `connectPipe` is stubbed here as the logical place for a
- * future fetch-and-register path where the operator supplies a manifest
- * URL (e.g. `https://pipes.pink/manifests/acme-corp.json`) and Greater
- * loads it at runtime without a rebuild.
+ * Returns the mounted PipeManifest for the two known FOSS demo personas
+ * ("bitcoin-greater" / "bitcoin"). For any other pipeId the function
+ * throws a human-readable consulting-boundary error so FOSS forks
+ * discover the limit immediately without hunting for it in the source.
  *
- * V1 design notes (do not implement until the manifest schema stabilises):
- *  - Fetch the manifest from `url`; validate against the PipeManifest
- *    schema (zod parse).
- *  - Write the validated manifest into a runtime registry (e.g. a Zustand
- *    store or React context) so downstream `listPipes()` / `getActivePipe()`
- *    calls can merge build-time + runtime entries.
- *  - Persist to IndexedDB (not localStorage — manifests can exceed 8 KB)
- *    so the mounted Pipe survives a hard refresh.
- *  - Return the parsed manifest on success so the caller can reflect the
- *    loaded state in the UI.
- *
- * @throws NotImplementedError — remove this when the implementation lands.
+ * V1.5 design notes (runtime manifest loading, not yet implemented):
+ *  - The future signature will accept a URL, fetch + zod-validate the
+ *    manifest, write it into a runtime Zustand registry alongside the
+ *    build-time Pipes, and persist to IndexedDB.
+ *  - Remove the consulting-boundary throw and replace with the fetch path
+ *    once the PipeManifest schema stabilises and pipes.pink is live.
  */
-export function connectPipe(_url: string): never {
+export function connectPipe(pipeId: string): PipeManifest {
+  // Try to find the requested Pipe among the build-time-inlined set.
+  // Match on `pipe_id` (canonical) or `persona` (convenience alias used
+  // by FOSS forks that only know the demo route slug).
+  const pipe = PIPES.find(
+    (p) => p.pipe_id === pipeId || p.persona === pipeId,
+  );
+  if (pipe) return pipe;
+
+  // Everything outside the build-time set is a production Pipe — those
+  // require a Greater Studio deployment and are not distributable via
+  // the FOSS shell. Surface a clear consulting-boundary message so FOSS
+  // forks discover the limit immediately without hunting for it.
   throw new Error(
-    "connectPipe is not yet implemented. " +
-      "Runtime Pipe mounting is planned for V1.5. " +
-      "For now, add the Pipe manifest to data/pipes/ and rebuild.",
+    `Production Pipes require a Greater Studio deployment — ` +
+      `see HARNESS_BEST_PRACTICES.md to build a local harness, ` +
+      `or contact colonhyphenbracket.pink for a curated Pipe.`,
   );
 }
