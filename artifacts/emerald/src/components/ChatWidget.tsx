@@ -220,6 +220,7 @@ export function ChatWidget({
     ].slice(-MAX_TERMINAL_LINES);
     setTerminalLines([...terminalLinesRef.current]);
   }, []);
+  const [importedHarnessText, setImportedHarnessText] = useState<string>("");
   // Local Harness charter — user-authored text read from localStorage and
   // threaded into every llm.ask() call as the outermost system-prompt frame.
   // Keyed by persona so different bots carry different harnesses independently.
@@ -1446,6 +1447,19 @@ export function ChatWidget({
         isOpen={showKnowledgePanel}
         onClose={() => setShowKnowledgePanel(false)}
         personaSlug={personaSlug}
+        onImportHarnesses={(harnesses) => {
+          const slug = personaSlug ?? "default";
+          const text =
+            harnesses[slug] ??
+            harnesses["__global__"] ??
+            Object.values(harnesses)[0] ??
+            "";
+          if (text) {
+            setImportedHarnessText(text);
+            setShowKnowledgePanel(false);
+            setShowHarnessPanel(true);
+          }
+        }}
       />
 
       <QaBankPanel
@@ -1471,6 +1485,8 @@ export function ChatWidget({
         onClose={() => setShowHarnessPanel(false)}
         personaSlug={personaSlug ?? "default"}
         onHarnessChange={setHarnessText}
+        importedText={importedHarnessText}
+        onImportedTextConsumed={() => setImportedHarnessText("")}
       />
 
       <TerminalPanel

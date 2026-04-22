@@ -77,23 +77,38 @@ function saveHarness(slug: string, text: string) {
  *
  * This is the FOSS "manual transmission" equivalent of a curated Pipe.
  * See HARNESS_BEST_PRACTICES.md for the authoring guide.
+ *
+ * When `importedText` is non-empty the panel opens in review mode:
+ * the textarea is pre-filled with the imported harness, a banner
+ * explains the content is not yet active, and the user must
+ * explicitly click Save to apply it. Closing without saving discards
+ * the import without touching the existing stored harness.
  */
 export function HarnessPanel({
   isOpen,
   onClose,
   personaSlug,
   onHarnessChange,
+  importedText,
+  onImportedTextConsumed,
 }: {
   isOpen: boolean;
   onClose: () => void;
   personaSlug: string;
   onHarnessChange: (text: string) => void;
+  /**
+   * When provided (non-empty) the panel opens pre-filled with this
+   * text in review mode. The user must click Save to apply.
+   */
+  importedText?: string;
+  /**
+   * Called after the user has saved (or dismissed) the import so the
+   * parent can clear the pending `importedText` state.
+   */
+  onImportedTextConsumed?: () => void;
 }) {
-  // When no harness has been saved yet, pre-fill with the commented
-  // template so the operator has an immediately-editable starting point.
-  // The template is purely a display default: it is not written to
-  // localStorage (and therefore not injected into prompts) until the
-  // operator clicks Save.
+  const isImportReview = Boolean(importedText && importedText.trim());
+
   const [draft, setDraft] = useState(
     () => loadHarness(personaSlug) || HARNESS_TEMPLATE,
   );
@@ -101,15 +116,20 @@ export function HarnessPanel({
 
   useEffect(() => {
     if (isOpen) {
-      setDraft(loadHarness(personaSlug) || HARNESS_TEMPLATE);
+      if (isImportReview && importedText) {
+        setDraft(importedText);
+      } else {
+        setDraft(loadHarness(personaSlug) || HARNESS_TEMPLATE);
+      }
       setSaved(false);
     }
-  }, [isOpen, personaSlug]);
+  }, [isOpen, personaSlug, isImportReview, importedText]);
 
   const handleSave = () => {
     saveHarness(personaSlug, draft);
     onHarnessChange(draft.trim());
     setSaved(true);
+    onImportedTextConsumed?.();
   };
 
   const handleClear = () => {
@@ -119,11 +139,16 @@ export function HarnessPanel({
     setSaved(false);
   };
 
+  const handleClose = () => {
+    onImportedTextConsumed?.();
+    onClose();
+  };
+
   const charCount = draft.length;
   const overLimit = charCount > MAX_CHARS;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-2xl bg-[hsl(var(--widget-bg))] border-[hsl(var(--widget-border))] text-[hsl(var(--widget-fg))]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -137,16 +162,28 @@ export function HarnessPanel({
           </DialogDescription>
         </DialogHeader>
 
+        {isImportReview && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] text-amber-300 leading-relaxed">
+            <span className="font-semibold">Imported harness — review before saving.</span>{" "}
+            This content came from a greater-export file and has not been applied yet.
+            Edit as needed, then click{" "}
+            <span className="font-semibold">Save harness</span> to activate it.
+            Closing the panel without saving discards this import.
+          </div>
+        )}
+
         <div className="space-y-3">
           <textarea
             value={draft}
+            readOnly={isImportReview}
             onChange={(e) => {
+              if (isImportReview) return;
               setDraft(e.target.value);
               setSaved(false);
             }}
             rows={14}
             spellCheck={false}
-            className="w-full resize-y rounded-md border border-[hsl(var(--widget-border))] bg-transparent px-3 py-2 font-mono text-xs text-[hsl(var(--widget-fg))] placeholder:text-[hsl(var(--widget-muted))]/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            className={`w-full resize-y rounded-md border border-[hsl(var(--widget-border))] bg-transparent px-3 py-2 font-mono text-xs text-[hsl(var(--widget-fg))] placeholder:text-[hsl(var(--widget-muted))]/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 ${isImportReview ? "opacity-80 cursor-default select-all" : ""}`}
             data-testid="harness-textarea"
           />
 
@@ -166,7 +203,7 @@ export function HarnessPanel({
             </span>
 
             <div className="flex items-center gap-2">
-              {draft.trim() && (
+              {draft.trim() && !isImportReview && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -226,7 +263,7 @@ export function HarnessPanel({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute right-3 top-3 p-1 text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))]"
           aria-label="Close"
         >

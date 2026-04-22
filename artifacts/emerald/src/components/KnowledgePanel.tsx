@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Database,
+  Download,
   FileText,
   FolderOpen,
   Globe,
@@ -9,6 +10,7 @@ import {
   Radio,
   Rss,
   Trash2,
+  Upload,
   Workflow,
   X,
 } from "lucide-react";
@@ -36,6 +38,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  buildExport,
+  downloadExport,
+  estimateFullExportSize,
+  EXPORT_SIZE_LIMIT_BYTES,
+} from "@/lib/exportKb";
+import { importKb, ImportValidationError } from "@/lib/importKb";
 
 const MODE_META: Record<
   IngestMode,
@@ -91,6 +100,7 @@ export function KnowledgePanel({
   isOpen,
   onClose,
   personaSlug,
+  onImportHarnesses,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -101,9 +111,16 @@ export function KnowledgePanel({
    * stamped `__global__` and remain eligible across all personas.
    */
   personaSlug?: string;
+  /**
+   * Called after a successful import when the export file contained
+   * harness entries. The parent should open HarnessPanel in review
+   * mode for each slug. The map is keyed by persona slug.
+   */
+  onImportHarnesses?: (harnesses: Record<string, string>) => void;
 }) {
   const [tab, setTab] = useState<Tab>("index");
   const [sources, setSources] = useState<IndexedSource[]>([]);
+  const { toast } = useToast();
 
   const refreshSources = useCallback(async () => {
     try {
@@ -190,6 +207,20 @@ export function KnowledgePanel({
           <SourcesList sources={sources} onRemoved={refreshSources} />
         </div>
 
+        <EjectImportBar
+          personaSlug={personaSlug}
+          onImported={async (harnesses) => {
+            await refreshSources();
+            if (
+              onImportHarnesses &&
+              Object.keys(harnesses).length > 0
+            ) {
+              onImportHarnesses(harnesses);
+            }
+          }}
+          toast={toast}
+        />
+
         <button
           type="button"
           onClick={onClose}
@@ -200,6 +231,234 @@ export function KnowledgePanel({
         </button>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Eject KB / Import KB toolbar
+// ---------------------------------------------------------------------------
+
+/**
+ * When a full export would exceed 50 MB the user gets an inline choice:
+ *   "persona only" | "all (large)" | "cancel"
+ */
+type SizeChoice = "pending" | "persona" | "all" | null;
+
+function EjectImportBar({
+  personaSlug,
+  onImported,
+  toast,
+}: {
+  personaSlug?: string;
+  onImported: (harnesses: Record<string, string>) => Promise<void>;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [ejecting, setEjecting] = useState(false);
+  const [ejectProgress, setEjectProgress] = useState<{ done: number; total: number } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
+  const [sizeChoice, setSizeChoice] = useState<SizeChoice>(null);
+  const [estimatedMb, setEstimatedMb] = useState<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const runExport = async (forcePersonaScope?: boolean) => {
+    setSizeChoice(null);
+    setEjecting(true);
+    setEjectProgress(null);
+    try {
+      const result = await buildExport({
+        personaSlug,
+        forcePersonaScope,
+        onProgress: (p) => setEjectProgress({ done: p.done, total: p.total }),
+      });
+
+      downloadExport(result.payload);
+
+      const mb = (result.estimatedBytes / (1024 * 1024)).toFixed(1);
+      toast({
+        title: "Knowledge base exported",
+        description: `Downloaded ${result.payload.chunks.length.toLocaleString()} chunk${
+          result.payload.chunks.length === 1 ? "" : "s"
+        } · ~${mb} MB${result.fullExport ? "" : ` (${result.personaScope} persona only)`}.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Export failed",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setEjecting(false);
+      setEjectProgress(null);
+    }
+  };
+
+  const handleEject = async () => {
+    const bytes = await estimateFullExportSize();
+    if (bytes > EXPORT_SIZE_LIMIT_BYTES && personaSlug) {
+      setEstimatedMb(bytes / (1024 * 1024));
+      setSizeChoice("pending");
+      return;
+    }
+    await runExport(false);
+  };
+
+  const handleImportFile = async (file: File) => {
+    setImporting(true);
+    setImportProgress(null);
+    try {
+      const raw = await file.text();
+      const result = await importKb(raw, (p) =>
+        setImportProgress({ done: p.done, total: p.total }),
+      );
+      toast({
+        title: "Import complete",
+        description: `${result.chunks_imported.toLocaleString()} chunk${
+          result.chunks_imported === 1 ? "" : "s"
+        } imported · ${result.chunks_skipped.toLocaleString()} skipped (already present)${
+          Object.keys(result.harnesses).length > 0
+            ? " · Harness ready for review in Harness panel."
+            : ""
+        }`,
+      });
+      await onImported(result.harnesses);
+    } catch (err) {
+      const msg = err instanceof ImportValidationError
+        ? err.message
+        : `Import failed: ${(err as Error).message}`;
+      toast({
+        title: "Import failed",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
+      setImportProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const busy = ejecting || importing;
+  const progressBar = ejecting ? ejectProgress : importProgress;
+
+  return (
+    <div className="border-t border-[hsl(var(--widget-border))] pt-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-xs uppercase tracking-wider text-[hsl(var(--widget-muted))]">
+          Portability
+        </h4>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy || sizeChoice === "pending"}
+            onClick={() => void handleEject()}
+            className="h-7 gap-1.5 border-[hsl(var(--widget-border))] text-[hsl(var(--widget-fg))] hover:bg-white/5 text-xs"
+            data-testid="kb-eject"
+          >
+            {ejecting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            {ejecting ? "Exporting…" : "Eject KB"}
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy || sizeChoice === "pending"}
+            onClick={() => fileInputRef.current?.click()}
+            className="h-7 gap-1.5 border-[hsl(var(--widget-border))] text-[hsl(var(--widget-fg))] hover:bg-white/5 text-xs"
+            data-testid="kb-import"
+          >
+            {importing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5" />
+            )}
+            {importing ? "Importing…" : "Import KB"}
+          </Button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleImportFile(file);
+            }}
+            data-testid="kb-import-input"
+          />
+        </div>
+      </div>
+
+      {progressBar && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[11px] text-[hsl(var(--widget-muted))]">
+            <span>{ejecting ? "Serialising chunks…" : "Writing chunks…"}</span>
+            <span>{progressBar.done.toLocaleString()} / {progressBar.total.toLocaleString()}</span>
+          </div>
+          <div className="h-1 bg-white/5 rounded overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 transition-all"
+              style={{
+                width: progressBar.total > 0
+                  ? `${Math.round((progressBar.done / progressBar.total) * 100)}%`
+                  : "5%",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {sizeChoice === "pending" && personaSlug && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+          <p className="text-[11px] text-amber-300 leading-relaxed">
+            <span className="font-semibold">Large export (~{estimatedMb.toFixed(0)} MB).</span>{" "}
+            Choose whether to export all personas or just the active one.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void runExport(true)}
+              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 text-white"
+              data-testid="kb-eject-persona"
+            >
+              Export "{personaSlug}" only
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void runExport(false)}
+              className="h-7 text-xs border-[hsl(var(--widget-border))] text-[hsl(var(--widget-fg))] hover:bg-white/5"
+              data-testid="kb-eject-all"
+            >
+              Export all (~{estimatedMb.toFixed(0)} MB)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSizeChoice(null)}
+              className="h-7 text-xs text-[hsl(var(--widget-muted))]"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <p className="text-[11px] text-[hsl(var(--widget-muted))]">
+        Eject KB downloads all vectors + harnesses to a single JSON file (FOSS sovereignty exit).
+        Import merges a previous export back in — existing chunks are skipped, harnesses need review.
+      </p>
+    </div>
   );
 }
 
