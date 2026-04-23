@@ -35,22 +35,33 @@ export function PersonaCard({
   const hasPipe = isGreaterMode(persona.slug as PipePersona);
   const demoHref = `/demo/${persona.slug}`;
 
+  // Status badge — editorial italic-serif with a leading color dot
+  // instead of the previous tinted-rect "Demo available / Proprietary
+  // · for hire" pills. The emerald variant in particular failed on
+  // the cream surface; this version gets all its contrast from the
+  // dot, so the type stays muted and the cards read as a magazine
+  // grid rather than a status-pill grid.
   const pillLabel = featured
-    ? "Live · Full corpus"
+    ? "Live · full corpus"
     : hasPipe
       ? "Demo available"
       : "Proprietary · for hire";
-  const pillClass = featured
-    ? "text-pink-600 dark:text-pink-400 border-pink-500/40 bg-pink-500/5"
+  const dotColor = featured
+    ? "hsl(328 99% 58%)"
     : hasPipe
-      ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/40 bg-emerald-500/5"
-      : "text-muted-foreground border-border bg-secondary/40";
+      ? "hsl(160 70% 38%)"
+      : "hsl(0 0% 55%)";
 
   return (
     <article
       className={cn(
-        "flex flex-col rounded-xl border bg-card overflow-hidden",
-        featured ? "border-pink-500/30 lg:flex-row" : "border-card-border",
+        // Sharper corners + neutral border across all variants. The
+        // previous featured pink-border tried to do the heavy lifting
+        // for hierarchy and ended up competing with the brand pink in
+        // the CTA. Hierarchy now comes from size + the brand-pink
+        // eyebrow line, not chrome.
+        "flex flex-col rounded-sm border border-card-border bg-card overflow-hidden",
+        featured && "lg:flex-row",
       )}
       data-testid={`card-persona-${persona.slug}`}
     >
@@ -80,12 +91,15 @@ export function PersonaCard({
             )}
           </div>
           <span
-            className={cn(
-              "chb-mono-label px-1.5 py-0.5 rounded border self-start",
-              pillClass,
-            )}
+            className="inline-flex items-center gap-1.5 self-start text-[0.78rem] italic text-muted-foreground"
+            style={{ fontFamily: 'var(--font-serif)' }}
             data-testid={`badge-status-${persona.slug}`}
           >
+            <span
+              aria-hidden="true"
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{ background: dotColor }}
+            />
             {pillLabel}
           </span>
         </button>
@@ -115,13 +129,16 @@ export function PersonaCard({
 
       <div className={cn("p-5 flex-1 flex flex-col", featured && "lg:p-7")}>
         {featured && (
-          <p className="chb-mono-eyebrow text-pink-600 dark:text-pink-400 mb-3">
+          <p
+            className="mb-3 text-[0.82rem] italic"
+            style={{ fontFamily: 'var(--font-serif)', color: 'hsl(328 99% 45%)' }}
+          >
             Launch demo · {persona.name}
           </p>
         )}
         <h3
           className={cn(
-            "font-semibold leading-snug mb-2",
+            "font-semibold leading-snug mb-2 tracking-tight",
             featured ? "text-xl sm:text-2xl" : "text-lg",
           )}
         >
@@ -136,21 +153,27 @@ export function PersonaCard({
           {persona.pain}
         </p>
 
-        <div className="mt-5 pt-4 border-t border-border flex flex-wrap gap-2">
+        {/* CTA row — sharper, more typographic. The primary action
+            (Try Demo) is the only filled element on the card, sized
+            to read as a button without the rounded-full quick-reply
+            shape. The case-study action is a quiet underlined text
+            link so the two CTAs no longer compete for the eye. */}
+        <div className="mt-5 pt-4 border-t border-border flex flex-wrap items-center gap-x-5 gap-y-2 mt-auto">
           <Link
             href={demoHref}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium hover-elevate active-elevate active:scale-[0.97]"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-sm bg-primary text-primary-foreground text-[13px] font-medium hover-elevate active-elevate active:scale-[0.98]"
             data-testid={`link-card-demo-${persona.slug}`}
           >
-            Try Demo
+            Try the demo
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
           <Link
             href={`/bots/${persona.slug}`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border text-xs font-medium hover-elevate active-elevate active:scale-[0.97]"
+            className="inline-flex items-center gap-1 text-[13px] text-foreground/80 hover:text-foreground underline underline-offset-4 decoration-foreground/30 hover:decoration-foreground/60 transition-colors"
             data-testid={`link-card-case-${persona.slug}`}
           >
-            Read Case Study
+            Read the case study
+            <ArrowRight className="w-3 h-3" aria-hidden="true" />
           </Link>
         </div>
       </div>
