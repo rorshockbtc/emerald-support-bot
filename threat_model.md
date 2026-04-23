@@ -69,15 +69,22 @@ shell is intentionally anonymous by default.
   boundary are: ingestion (`POST /api/ingest`, `POST /api/ingest/sitemap`,
   `POST /api/ingest/rss`), cloud-LLM fallback (`POST /api/chat`),
   ticket escalation (`POST /api/escalate`), and feedback submission
-  (`POST /api/feedback`, `POST /api/suggestion`). The api-server is
+  (`POST /api/feedback`, `POST /api/suggestions`). The api-server is
   untrusted from the browser's perspective and the browser is
-  untrusted from the api-server's perspective. Every browser-reachable
-  route is rate-limited via `express-rate-limit`:
+  untrusted from the api-server's perspective. Every write-capable or
+  externally-billable browser-reachable route is rate-limited via
+  `express-rate-limit`:
   - `/api/ingest*` — 30 req/min/IP burst + 500 pages/day/IP quota.
   - `/api/chat` — 20 req/min/IP (server-side backstop on top of the
     client-side per-session `CLOUD_CALL_BUDGET`).
   - `/api/escalate` — 6 req/min/IP.
-  - `/api/feedback`, `/api/suggestion` — 12 req/min/IP each.
+  - `/api/feedback` — 12 req/min/IP.
+  - `/api/suggestions` — 6 req/min/IP.
+
+  Read-only catalog/article routes (`/api/articles*`) and the
+  `/health` probe are intentionally not rate-limited — they serve
+  static, low-cost data and DDoS protection at that layer is the
+  reverse proxy / CDN's job, not the application's.
 - **api-server ↔ PostgreSQL** — direct credentialed access via
   Drizzle ORM. SQL injection at this boundary would expose all
   persisted data.

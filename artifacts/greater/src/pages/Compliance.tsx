@@ -121,9 +121,9 @@ export default function Compliance() {
             (or edit the default in <code>LLMProvider.tsx</code>). The
             widget will surface a "WebGPU unsupported — please use a
             Chromium-based browser" message instead of falling back.
-            The api-server also rate-limits the <code>/chat</code> route
-            server-side as a backstop, so the cap holds even against
-            a caller that has stripped the client-side budget.
+            The api-server also rate-limits the <code>/api/chat</code>{" "}
+            route server-side as a backstop, so the cap holds even
+            against a caller that has stripped the client-side budget.
           </p>
         </Section>
 
