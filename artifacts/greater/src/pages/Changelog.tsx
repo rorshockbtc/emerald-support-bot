@@ -58,7 +58,7 @@ const ENTRIES: { date: string; title: string; body: string }[] = [
   },
   {
     date: "Apr 13, 2026",
-    title: "Pivot — Greater → Greater",
+    title: "Pivot — Emerald → Greater",
     body:
       "The original repo was a Blockstream-specific support bot prototype. The pivot turns it into Greater, a platform for industry-specific support bots — six personas, FOSS shell, browser-local inference, hired-out customization. The Blockstream demo is preserved at /demo/blockstream as the live FinTech showcase and the proof of what a fully-tuned Greater bot looks like.",
   },

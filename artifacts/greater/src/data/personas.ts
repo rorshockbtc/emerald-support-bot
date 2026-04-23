@@ -117,10 +117,10 @@ export type PersonaScenario = {
    * model would hallucinate "I'm Greater, Blockstream's support
    * assistant" on every persona. Each persona owns its identity here.
    *
-   * Do not mention "Greater", "Blockstream", "Greater" (the framework),
-   * or unrelated brands inside this string — the bot speaks AS the
-   * persona's brand. The framework attribution lives only in the
-   * "Powered by Greater" footer.
+   * Do not mention "Greater" (the framework), "Blockstream", or other
+   * unrelated brands inside this string — the bot speaks AS the persona's
+   * brand. The framework attribution lives only in the "Powered by
+   * Greater" footer.
    */
   systemPrompt: string;
 };
