@@ -327,6 +327,16 @@ export interface LocalAnswer {
    * multi-turn threads stay coherent within a branch.
    */
   catalogLeafId?: string;
+  /**
+   * When the catalog returned a clarify result, the structured list
+   * of menu options the navigator surfaced (id / label / summary).
+   * The chat widget caches the most recent set so a follow-up reply
+   * like "1", "the second one" or "the latter" can be resolved to
+   * the chosen branch label and replayed as the next query, rather
+   * than being scored as a brand-new (and almost always off-topic)
+   * question.
+   */
+  clarifyOptions?: { id: string; label: string; summary: string }[];
 }
 
 /**

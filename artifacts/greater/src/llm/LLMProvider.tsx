@@ -1575,6 +1575,13 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             ...(result.landedLeafId
               ? { catalogLeafId: result.landedLeafId }
               : {}),
+            // Surface the structured clarify menu so the chat widget
+            // can resolve a follow-up like "1" / "the second one" /
+            // "the latter" against it on the next turn (positional-
+            // reply resolver in ChatWidget).
+            ...(result.kind === "clarify" && result.clarifyOptions
+              ? { clarifyOptions: result.clarifyOptions }
+              : {}),
           };
         } catch (err) {
           // Catalog failures are loud (the file genuinely couldn't be

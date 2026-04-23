@@ -101,7 +101,7 @@
     {
       "id": "whitepaper-precursors",
       "label": "The whitepaper and its precursors",
-      "summary": "Satoshi's original 2008 paper and the intellectual lineage it pulls from — Hashcash, b-money, Szabo's Bit Gold, Hal Finney's RPOW. Where the ideas actually came from and what each predecessor got right.",
+      "summary": "Satoshi's original 2008 paper and the intellectual lineage it pulls from — Hashcash, b-money, Szabo's Bit Gold, Hal Finney's RPOW. Where the ideas actually came from and what each predecessor got right. Also: the candidate-Satoshi shortlist (Adam Back, Nick Szabo, Hal Finney, Len Sassaman, Wei Dai).",
       "kind": "branch",
       "searchTerms": [
         "whitepaper", "white paper", "satoshi", "satoshi nakamoto", "nakamoto",
@@ -109,6 +109,10 @@
         "hashcash", "b-money", "bmoney", "wei dai",
         "bit gold", "bitgold", "szabo", "nick szabo",
         "rpow", "hal finney", "finney",
+        "adam", "adam back", "back's hashcash",
+        "len sassaman", "sassaman",
+        "blockstream founder", "blockstream's founder", "blockstream ceo",
+        "satoshi candidate", "satoshi candidates", "satoshi suspect", "satoshi suspects", "who is satoshi",
         "cypherpunk", "cypherpunks", "intellectual lineage", "predecessors", "origins of bitcoin"
       ]
     },
@@ -120,7 +124,7 @@
       "searchTerms": [
         "how do i", "how to", "set up", "setting up",
         "receive payment", "send payment",
-        "backup", "back up", "recover", "recovery",
+        "backup", "backups", "back up", "wallet backup", "back up wallet", "recover", "recovery", "restore wallet",
         "custodian", "non-custodial", "noncustodial",
         "operational", "practical", "step by step", "tutorial"
       ]

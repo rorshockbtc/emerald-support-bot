@@ -321,6 +321,19 @@ export function ChatWidget({
    */
   const consecutiveClarifiesRef = useRef<number>(0);
   /**
+   * Cached structured menu from the most recent clarify turn (id /
+   * label / summary, in display order). When the next user turn looks
+   * positional ("1", "first", "the latter", "option 2"), we resolve
+   * it against this cache and replay the catalog walk with the picked
+   * option's label as the query — instead of letting the bare token
+   * "1" score 0 against every branch and trigger another off-topic
+   * clarify. Cleared as soon as we ship a non-clarify turn so old
+   * menus can't leak into a later positional reply.
+   */
+  const lastClarifyOptionsRef = useRef<
+    { id: string; label: string; summary: string }[] | null
+  >(null);
+  /**
    * Stable id of the seeded welcome message. The widget always
    * injects a welcome turn (with or without the `welcomeMessage`
    * prop), and we need to be able to exclude it from "real turn"
@@ -625,7 +638,25 @@ export function ChatWidget({
       // bot." Pattern is conservative on purpose: the bot can still
       // answer "is satoshi human?" or "Hal Finney as a person" since
       // those don't match the contact-intent shape.
-      const escalationIntent = /\b(?:contact|reach|talk to|speak to|email|message)\s+(?:a\s+)?(?:human|person|someone|you|support|team)\b|\b(?:human|live|real)\s+(?:agent|person|support|help)\b|\bget\s+me\s+(?:a|to a)\s+(?:human|person)\b|\bthis\s+(?:bot\s+)?is\s+(?:useless|broken)\b/i;
+      // Broadened in round-2 after a live shit-test: visitors who'd
+      // already lost patience ("are you deliberately being obtuse and
+      // useless?", "are you actually capable of a chat or just the
+      // world's shittiest RAG?", "this isn't working") were getting
+      // dropped back into another clarify menu instead of an escape
+      // hatch. The pattern is now three branches OR'd together:
+      //   (a) explicit "get me a human" intent
+      //   (b) frustration adjectives aimed at the bot — handles both
+      //       "this bot is useless" and "you're useless / obtuse /
+      //       worthless / shitty / shittiest / broken / a joke /
+      //       fucking useless" without requiring the literal noun
+      //   (c) negative-utility statements about the conversation —
+      //       "this isn't working", "this sucks", "give up", "wtf",
+      //       "for fuck's sake", "what is wrong with you"
+      // Still conservative on actual-questions: "is satoshi useless?"
+      // doesn't match because the adjective isn't aimed at the bot
+      // (the (b) branch requires a 2nd-person address or "this bot").
+      const escalationIntent =
+        /\b(?:contact|reach|talk to|speak to|email|message)\s+(?:a\s+)?(?:human|person|someone|you|support|team)\b|\b(?:human|live|real)\s+(?:agent|person|support|help)\b|\bget\s+me\s+(?:a|to a)\s+(?:human|person)\b|\b(?:this\s+(?:bot|thing)|you|you'?re|are\s+you)\s+(?:is\s+|being\s+|just\s+|actually\s+|deliberately\s+|fucking\s+|really\s+)*(?:useless|broken|obtuse|worthless|shitty|shittiest|garbage|trash|terrible|awful|stupid|dumb|a\s+joke)\b|\bthis\s+(?:isn'?t|is\s+not)\s+working\b|\bthis\s+(?:thing\s+|bot\s+)?(?:sucks|blows)\b|\b(?:fuck\s+(?:you|this|off)|wtf|for\s+fuck'?s\s+sake|what'?s\s+wrong\s+with\s+you)\b|\b(?:i\s+)?give\s+up\b/i;
       if (escalationIntent.test(userText)) {
         // The user turn is already in `messages` — handleSend pushed
         // it before calling runLocal. Don't re-append it here or the
@@ -657,8 +688,76 @@ export function ChatWidget({
           replyPreview: botMsg.content.slice(0, 600),
         });
         consecutiveClarifiesRef.current = 0;
+        // Same lifecycle as the post-answer branch below: any non-
+        // clarify turn drops the cached menu so a later bare "1"
+        // can't be hijacked into a stale option from before the
+        // escalation. Without this, the user types frustration →
+        // gets the contact card → types "1" meaning "first option
+        // on the new card" and the catalog rewrites it to a stale
+        // branch label from two turns ago.
+        lastClarifyOptionsRef.current = null;
         setIsLocalGenerating(false);
         return;
+      }
+      // Positional-reply resolver. When the previous turn was a
+      // catalog clarify, lastClarifyOptionsRef holds the structured
+      // menu in display order. A bare reply like "1", "the second
+      // one", "first", "the latter", "option 2" is intent-as-pick,
+      // not a new question — but the catalog ranker can't see that
+      // (the token "1" matches nothing) and dumps the visitor into
+      // another off-topic clarify. Rewrite to the picked option's
+      // label + summary BEFORE handing to llm.ask so the navigator
+      // sees a real query and lands on the intended branch. Visible
+      // user bubble stays as the visitor typed — only the search
+      // string for this turn changes.
+      let catalogQuery = userText;
+      const opts = lastClarifyOptionsRef.current;
+      if (opts && opts.length > 0) {
+        const trimmed = userText.trim();
+        // Only fire on short, "looks like a pick" replies — avoid
+        // matching "first, the protocol uses…" or other longer turns
+        // that happen to start with an ordinal.
+        if (trimmed.length <= 40) {
+          const lower = trimmed.toLowerCase();
+          let picked = -1;
+          // Bare digit, optionally with a "." or ")" or "option" prefix.
+          const digitMatch = lower.match(/^(?:option\s+|number\s+|#)?(\d{1,2})\s*[.)]?\s*$/);
+          if (digitMatch) {
+            const n = parseInt(digitMatch[1], 10);
+            if (n >= 1 && n <= opts.length) picked = n - 1;
+          }
+          if (picked === -1) {
+            // Ordinal words. "Latter"/"former" only resolve when
+            // there are exactly two options (otherwise ambiguous).
+            const ord = lower.match(
+              /^(?:the\s+)?(first|second|third|fourth|fifth|last|latter|former)(?:\s+one)?\s*[.,!?]?\s*$/,
+            );
+            if (ord) {
+              const word = ord[1];
+              const map: Record<string, number> = {
+                first: 0, second: 1, third: 2, fourth: 3, fifth: 4,
+                former: 0,
+              };
+              if (word === 'last') picked = opts.length - 1;
+              else if (word === 'latter') picked = opts.length === 2 ? 1 : -1;
+              else picked = map[word] ?? -1;
+              if (picked >= opts.length) picked = -1;
+            }
+          }
+          if (picked >= 0) {
+            const chosen = opts[picked];
+            // Compose a query the catalog can actually rank against:
+            // label first (high signal for the branch's edge terms),
+            // then the summary so a stale-edge tie still resolves
+            // toward the right leaf. Telemetry gets the rewrite for
+            // debuggability.
+            catalogQuery = `${chosen.label}. ${chosen.summary}`;
+            appendTerminalLine?.(
+              '[Catalog]',
+              `Positional reply "${trimmed}" → option ${picked + 1} (${chosen.id}); rewriting query.`,
+            );
+          }
+        }
       }
       const history: ChatTurn[] = messages
         .filter((m) => (m.role === 'user' || m.role === 'bot') && !m.isModeNote)
@@ -763,7 +862,7 @@ export function ChatWidget({
       // populated when the visitor opens the panel mid-turn.
       askOptions = { ...(askOptions ?? {}), onTelemetry: appendTerminalLine };
       const askStart = performance.now();
-      const answer = await llm.ask(history, userText, askOptions);
+      const answer = await llm.ask(history, catalogQuery, askOptions);
       const askLatency = Math.round(performance.now() - askStart);
       const isOpenClaw = answer.source === 'openclaw';
       const isQaCache = answer.source === 'qa-cache';
@@ -862,8 +961,20 @@ export function ChatWidget({
       // permanently land in the escalated copy.
       if (reasoning.startsWith('Catalog clarify')) {
         consecutiveClarifiesRef.current += 1;
+        // Cache the structured menu so the next turn's positional-
+        // reply resolver can match "1" / "the latter" / "second one"
+        // against it. Falls back to clearing the cache if for some
+        // reason the navigator didn't surface options on this turn —
+        // safer to lose the resolver than mis-resolve against a
+        // stale menu.
+        lastClarifyOptionsRef.current = answer.clarifyOptions ?? null;
       } else {
         consecutiveClarifiesRef.current = 0;
+        // Non-clarify turn shipped — drop the cached menu so a much
+        // later positional-looking message (e.g. "1 satoshi") doesn't
+        // get hijacked into "the first option from a clarify three
+        // turns ago".
+        lastClarifyOptionsRef.current = null;
       }
       // Push the catalog leaf id (when present) into the sticky-context
       // ring buffer so the next turn's navigator can prefer the same

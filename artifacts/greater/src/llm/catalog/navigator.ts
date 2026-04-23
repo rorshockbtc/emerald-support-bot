@@ -385,13 +385,17 @@ function renderVerbatim(
     }
   }
 
-  if (modelWarmingUp) {
-    return [
-      `*My local AI model is still loading — answering from the closest curated note. Ask again in a moment for a tailored answer.*`,
-      "",
-      body,
-    ].join("\n");
-  }
+  // Note: the modelWarmingUp parameter is intentionally retained on
+  // the signature for backward compatibility with the navigator API,
+  // but no longer prepends a "still loading" hedge. The live shit-
+  // test showed visitors saw the prefix on every turn (the WebGPU
+  // model can take minutes to load on first visit, and on the Replit
+  // dev iframe it never reaches "ready" at all) and read it as a
+  // permanent broken state. The catalog brief is the actual product
+  // — apologising for it on every turn made things worse, not
+  // better. If we want to differentiate later, do it via a one-off
+  // toast on the chat header, NOT a per-turn prefix.
+  void modelWarmingUp;
   return body;
 }
 
