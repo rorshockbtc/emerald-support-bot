@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "Catalog smoke tests for the Bitcoin pack (Task #68). Each case asserts that a representative visitor query lands on a specific authored leaf via the catalog navigator. Only the two fully-built branches (austrian-monetary and core-internals) are exercised today; stub branches return graceful-degradation messages and aren't tested for confidence.",
+  "description": "Catalog smoke tests for the Bitcoin pack (Task #68). Each case asserts that a representative visitor query lands on a specific authored leaf via the catalog navigator. Three fully-built branches today (austrian-monetary, core-internals, lightning); the remaining stub branches return graceful-degradation messages and aren't tested for confidence.",
   "cases": [
     { "query": "what is sound money", "expectedLeafId": "sound-money", "minConfidence": 0.4 },
     { "query": "explain the regression theorem and how bitcoin satisfies it", "expectedLeafId": "regression-theorem", "minConfidence": 0.5 },
@@ -23,7 +23,16 @@
     { "query": "why is gresham's law relevant to bitcoin pricing", "expectedLeafId": "unit-of-account", "minConfidence": 0.4 },
     { "query": "how does child-pays-for-parent help unstick a transaction", "expectedLeafId": "mempool", "minConfidence": 0.4 },
     { "query": "what is bip-9 version bits signaling", "expectedLeafId": "block-template", "minConfidence": 0.3 },
-    { "query": "why is the supply schedule fixed in code instead of by a central authority", "expectedLeafId": "why-fixed-supply", "minConfidence": 0.4 }
+    { "query": "why is the supply schedule fixed in code instead of by a central authority", "expectedLeafId": "why-fixed-supply", "minConfidence": 0.4 },
+
+    { "query": "explain how a lightning payment channel works with the funding transaction", "expectedLeafId": "payment-channels", "minConfidence": 0.4 },
+    { "query": "what is an htlc and how does sphinx onion routing keep payments private", "expectedLeafId": "htlc-routing", "minConfidence": 0.4 },
+    { "query": "how does the lightning gossip protocol propagate the channel graph", "expectedLeafId": "gossip-protocol", "minConfidence": 0.4 },
+    { "query": "what is a watchtower and why do offline lightning channels need one", "expectedLeafId": "watchtowers", "minConfidence": 0.4 },
+    { "query": "explain channel splicing and how routing fees work on lightning", "expectedLeafId": "channel-management", "minConfidence": 0.4 },
+    { "query": "what is a lightning service provider and how do jit channels work", "expectedLeafId": "lightning-services", "minConfidence": 0.4 },
+    { "query": "what is the difference between cooperative close and force close on lightning", "expectedLeafId": "payment-channels", "minConfidence": 0.3 },
+    { "query": "how does multi-path payment let lightning route a large amount", "expectedLeafId": "htlc-routing", "minConfidence": 0.3 }
   ],
   "antiDriftCases": [
     { "query": "should I buy ethereum instead of bitcoin", "expectKind": "refuse" },

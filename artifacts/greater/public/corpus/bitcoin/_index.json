@@ -4,6 +4,12 @@
   "generated_by": "build-catalog-corpus",
   "documents": [
     {
+      "slug": "arxiv-org-abs-2107-05322-dd722d92",
+      "source_url": "https://arxiv.org/abs/2107.05322",
+      "source_label": "Pickhardt & Richter — Optimally Reliable & Cheap Payment Flows on the Lightning Network",
+      "cited_by_count": 1
+    },
+    {
       "slug": "bitcoinops-org-en-newsletters-703b409a",
       "source_url": "https://bitcoinops.org/en/newsletters/",
       "source_label": "Bitcoin Optech — collected newsletters",
@@ -34,6 +40,18 @@
       "cited_by_count": 1
     },
     {
+      "slug": "bitcoinops-org-en-topics-jit-channels-4f0119cf",
+      "source_url": "https://bitcoinops.org/en/topics/jit-channels/",
+      "source_label": "Bitcoin Optech — Topics on JIT Channels",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "bitcoinops-org-en-topics-lightning-network-b43c3116",
+      "source_url": "https://bitcoinops.org/en/topics/lightning-network/",
+      "source_label": "Bitcoin Optech — Topics on Lightning Network",
+      "cited_by_count": 2
+    },
+    {
       "slug": "bitcoinops-org-en-topics-replace-by-fee-7edc2324",
       "source_url": "https://bitcoinops.org/en/topics/replace-by-fee/",
       "source_label": "Bitcoin Optech — Topics on Replace-by-Fee",
@@ -49,6 +67,84 @@
       "slug": "bitcoinops-org-en-topics-soft-fork-activation-7f58284f",
       "source_url": "https://bitcoinops.org/en/topics/soft-fork-activation/",
       "source_label": "Bitcoin Optech — Topics on Soft Fork Activation",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "bitcoinops-org-en-topics-splicing-b43f59cc",
+      "source_url": "https://bitcoinops.org/en/topics/splicing/",
+      "source_label": "Bitcoin Optech — Topics on Splicing",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-bitcoinandlightninglayerspecs-lsp-ef694d1d",
+      "source_url": "https://github.com/BitcoinAndLightningLayerSpecs/lsp",
+      "source_label": "BLIP-51 / LSPS specifications",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lightning-bolts-blob-master-02-peer-protocol-md-795bd5fd",
+      "source_url": "https://github.com/lightning/bolts/blob/master/02-peer-protocol.md",
+      "source_label": "BOLT-2: Peer Protocol for Channel Management (incl. splicing)",
+      "cited_by_count": 2
+    },
+    {
+      "slug": "github-com-lightning-bolts-blob-master-04-onion-routing-protocol-md-1b043243",
+      "source_url": "https://github.com/lightning/bolts/blob/master/04-onion-routing-protocol.md",
+      "source_label": "BOLT-4: Onion Routing Protocol",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lightning-bolts-blob-master-07-routing-gossip-md-99259e21",
+      "source_url": "https://github.com/lightning/bolts/blob/master/07-routing-gossip.md",
+      "source_label": "BOLT-7: P2P Node and Channel Discovery",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lnbook-lnbook-blob-develop-07-payment-channels-asciidoc-42b6d879",
+      "source_url": "https://github.com/lnbook/lnbook/blob/develop/07_payment_channels.asciidoc",
+      "source_label": "Mastering Lightning Network — Chapter 7: Payment Channels",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lnbook-lnbook-blob-develop-08-routing-htlcs-asciidoc-1f5d78f4",
+      "source_url": "https://github.com/lnbook/lnbook/blob/develop/08_routing_htlcs.asciidoc",
+      "source_label": "Mastering Lightning Network — Chapter 8: Routing on a Network of Payment Channels",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lnbook-lnbook-blob-develop-09-channel-operation-asciidoc-dc23e57f",
+      "source_url": "https://github.com/lnbook/lnbook/blob/develop/09_channel_operation.asciidoc",
+      "source_label": "Mastering Lightning Network — Chapter 9: Channel Operation and Payment Forwarding",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lnbook-lnbook-blob-develop-10-onchain-anatomy-asciidoc-6723c42e",
+      "source_url": "https://github.com/lnbook/lnbook/blob/develop/10_onchain_anatomy.asciidoc",
+      "source_label": "Mastering Lightning Network — Chapter 10: Onchain Transaction Anatomy",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-lnbook-lnbook-blob-develop-11-gossip-asciidoc-4c2315bc",
+      "source_url": "https://github.com/lnbook/lnbook/blob/develop/11_gossip.asciidoc",
+      "source_label": "Mastering Lightning Network — Chapter 11: Gossip and the Channel Graph",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-sr-gi-bolt13-2151a2f1",
+      "source_url": "https://github.com/sr-gi/bolt13",
+      "source_label": "BOLT-13 (draft): Watchtowers",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "github-com-talaia-labs-rust-teos-41939233",
+      "source_url": "https://github.com/talaia-labs/rust-teos",
+      "source_label": "Sergi Delgado — The Eye of Satoshi: Lightning Watchtower Implementation",
+      "cited_by_count": 1
+    },
+    {
+      "slug": "lightning-engineering-posts-2020-11-02-pool-launch-685a283c",
+      "source_url": "https://lightning.engineering/posts/2020-11-02-pool-launch/",
+      "source_label": "Lightning Labs — Pool / Liquidity Ads technical overview",
       "cited_by_count": 1
     },
     {
