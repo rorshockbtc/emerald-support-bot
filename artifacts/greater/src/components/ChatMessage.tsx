@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, User, AlertTriangle, FileText, ShieldCheck, Cloud, Brain, ChevronDown, ChevronUp, ExternalLink, ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
+import { User, AlertTriangle, FileText, Brain, ChevronDown, ChevronUp, ExternalLink, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn, formatTime } from '@/lib/utils';
 import { TrustBadge } from './TrustBadge';
 import { useToast } from '@/hooks/use-toast';
@@ -175,11 +175,26 @@ export function ChatMessage({
       )}
     >
       {isBot && (
-        <div className={cn(
-          "rounded-full bg-emerald-600/20 border border-emerald-600/30 flex items-center justify-center shrink-0 mt-0.5",
-          compact ? "w-7 h-7" : "w-8 h-8"
-        )}>
-          <Bot className={cn("text-emerald-400", compact ? "w-4 h-4" : "w-5 h-5")} />
+        <div
+          className={cn(
+            // Brand-aligned avatar — serif "G" monogram on a pink-
+            // tinted field. Replaces the emerald lucide Bot icon so
+            // every bot turn carries the same wordmark cue as the
+            // header, not a generic chat-app robot.
+            "rounded-full bg-[hsl(328_99%_58%)]/12 border border-[hsl(328_99%_58%)]/40 flex items-center justify-center shrink-0 mt-0.5 select-none",
+            compact ? "w-7 h-7" : "w-8 h-8"
+          )}
+          aria-hidden="true"
+        >
+          <span
+            className={cn(
+              "text-[hsl(328_99%_45%)] leading-none italic",
+              compact ? "text-[12px]" : "text-[14px]"
+            )}
+            style={{ fontFamily: 'var(--font-serif)', transform: 'translateY(-0.5px)' }}
+          >
+            G
+          </span>
         </div>
       )}
 
@@ -224,8 +239,8 @@ export function ChatMessage({
             // user gets a quieter right rule. Same affordance, less
             // chat-app chrome.
             isBot
-              ? "bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-2 border-l-emerald-500/40 rounded-md"
-              : "bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] border-r-2 border-r-foreground/25 rounded-md"
+              ? "bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-2 border-l-[hsl(328_99%_58%)]/45 rounded-md"
+              : "bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] border-r-2 border-r-foreground/30 rounded-md"
           )}
         >
           <div className="whitespace-pre-wrap leading-relaxed">

@@ -58,12 +58,13 @@ export function DisclaimerBanner({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
       data-testid="disclaimer-banner"
-      className="relative mb-5 rounded-md border border-pink-500/30 bg-pink-500/5 pl-4 pr-9 py-3 text-[13px] leading-relaxed text-[hsl(var(--widget-fg))]"
-      style={{ borderLeftWidth: 3 }}
+      className="relative mb-5 rounded-sm border border-[hsl(var(--widget-border))] bg-transparent pl-4 pr-9 py-3 text-[13px] leading-relaxed text-[hsl(var(--widget-fg))]"
+      style={{ borderLeftWidth: 2, borderLeftColor: 'hsl(328 99% 58% / 0.55)' }}
     >
       <div className="flex items-start gap-2.5">
         <ShieldAlert
-          className="w-4 h-4 mt-0.5 shrink-0 text-pink-300"
+          className="w-4 h-4 mt-0.5 shrink-0"
+          style={{ color: 'hsl(328 99% 50%)' }}
           aria-hidden="true"
         />
         <div className="flex-1 min-w-0">
@@ -77,7 +78,8 @@ export function DisclaimerBanner({
             href={href}
             target="_blank"
             rel="noreferrer noopener"
-            className="mt-2 inline-flex items-center gap-1 text-pink-300 hover:text-pink-200 underline underline-offset-2 text-[12px]"
+            className="mt-2 inline-flex items-center gap-1 underline underline-offset-2 text-[12px] hover:opacity-80"
+            style={{ color: 'hsl(328 99% 45%)' }}
             data-testid="link-disclaimer-learn-more"
           >
             {copy.learnMoreLabel ?? "Learn more"}
@@ -96,7 +98,7 @@ export function DisclaimerBanner({
           setDismissed(true);
         }}
         aria-label="Dismiss disclaimer"
-        className="absolute top-2 right-2 p-1 rounded-md text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
+        className="absolute top-2 right-2 p-1 rounded-md text-[hsl(var(--widget-muted))] hover:text-[hsl(var(--widget-fg))] focus:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(328_99%_58%)]"
         data-testid="button-disclaimer-dismiss"
       >
         <X className="w-3.5 h-3.5" />

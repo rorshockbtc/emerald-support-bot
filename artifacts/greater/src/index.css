@@ -247,18 +247,22 @@
   color: hsl(var(--widget-fg));
 }
 
-/* Light variant — readable for visitors who find white-on-black
-   uncomfortable. Kept inside .chat-widget so it never leaks to the
-   surrounding page chrome. */
+/* Light variant — magazine-paper surface that reads as a sibling of
+   the marketing site rather than a pop-in dark tech-app overlay.
+   Kept inside .chat-widget so it never leaks to the surrounding page
+   chrome. Slightly warm off-white card on a near-white bg so the
+   message column visibly lifts off the surrounding panel; hairline
+   borders pulled darker than the previous 88% so they actually read
+   on the pale surface. */
 .chat-widget[data-theme="light"] {
-  --widget-bg: 0 0% 100%;
-  --widget-fg: 0 0% 10%;
-  --widget-card: 0 0% 97%;
-  --widget-border: 0 0% 88%;
+  --widget-bg: 0 0% 99%;
+  --widget-fg: 0 0% 12%;
+  --widget-card: 41 22% 96%;
+  --widget-border: 0 0% 82%;
   --widget-muted: 0 0% 38%;
-  --widget-input: 0 0% 96%;
-  --secondary: 0 0% 94%;
-  --muted: 0 0% 95%;
+  --widget-input: 0 0% 100%;
+  --secondary: 41 18% 94%;
+  --muted: 41 14% 92%;
 }
 
 .chat-widget ::-webkit-scrollbar-thumb {
@@ -411,6 +415,62 @@
  * uses so the warning stays legible on the pale surface.
  */
 [data-theme="light"] .chb-chat-pill.text-warning { color: rgb(180 83 9); }
+
+/**
+ * Editorial suggested-prompt chip. Replaces the previous
+ *   text-xs px-3 py-1.5 rounded-full border border-emerald-500/40
+ *   bg-emerald-500/10 text-emerald-700 dark:text-emerald-200
+ * "rounded-full green pill" pattern that read as the standard
+ * AI-template suggestion strip and failed WCAG AA on the pale
+ * widget surface. The new chip is a hairline-bordered card with a
+ * small leading "→" mark and serif-italic prompt text — closer to
+ * a magazine reader-prompt than a chat-app quick-reply button.
+ * Brand-pink accent on hover instead of emerald saturation.
+ */
+.chb-suggestion-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  text-align: left;
+  color: hsl(var(--widget-fg) / 0.86);
+  background: transparent;
+  border: 1px solid hsl(var(--widget-border));
+  border-radius: 4px;
+  padding: 0.45rem 0.7rem 0.5rem;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  cursor: pointer;
+}
+.chb-suggestion-chip:hover:not(:disabled) {
+  color: hsl(328 99% 38%);
+  border-color: hsl(328 99% 58% / 0.55);
+  background: hsl(328 99% 58% / 0.04);
+}
+.chb-suggestion-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.chb-suggestion-chip-mark {
+  font-style: normal;
+  font-family: var(--font-sans);
+  color: hsl(328 99% 58%);
+  font-size: 0.85em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .chb-suggestion-chip {
+  color: hsl(var(--widget-fg) / 0.78);
+}
+[data-theme="dark"] .chb-suggestion-chip:hover:not(:disabled) {
+  color: hsl(328 99% 75%);
+  border-color: hsl(328 99% 58% / 0.55);
+  background: hsl(328 99% 58% / 0.08);
+}
 
 /**
  * Serif headline utility — Fraunces with optical-size + tighter

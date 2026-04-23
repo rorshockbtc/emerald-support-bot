@@ -18,16 +18,22 @@ export function TrustBadge({ score, ciBreakdown, sourceUrl, lastUpdated }: Trust
 
   const percentage = Math.round(score * 100);
   
-  let statusColor = "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
+  // Editorial pass: drop the per-tier tinted-rect "pill" chrome
+  // (emerald / amber / warning rounded-full) for the same italic-
+  // serif chb-chat-pill treatment the rest of the chat surface uses.
+  // Color is the only per-tier signal; the dot inherits it via
+  // currentColor. WCAG-AA on the cream widget surface is handled by
+  // the [data-theme="light"] overrides next to chb-chat-pill.
+  let statusColor = "text-emerald-400";
   let statusLabel = "Verified";
   let Icon = ShieldCheck;
-  
+
   if (percentage < 75) {
-    statusColor = "text-amber-400 bg-amber-400/10 border-amber-400/20";
+    statusColor = "text-amber-400";
     statusLabel = "Verification Required";
     Icon = AlertTriangle;
   } else if (percentage < 92) {
-    statusColor = "text-warning bg-warning/10 border-warning/20";
+    statusColor = "text-warning";
     statusLabel = "Good";
     Icon = Info;
   }
@@ -52,18 +58,17 @@ export function TrustBadge({ score, ciBreakdown, sourceUrl, lastUpdated }: Trust
   };
 
   return (
-    <div className="relative inline-block mt-2" ref={badgeRef}>
+    <div className="relative inline-block" ref={badgeRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
+        title={`${statusLabel} · ${percentage}% Trust Score`}
         className={cn(
-          "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+          "chb-chat-pill transition-colors hover:opacity-80 focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-background focus-visible:ring-current rounded-sm",
           statusColor,
-          isOpen && "ring-2 ring-offset-2 ring-offset-background ring-emerald-500/30"
         )}
       >
-        <Icon className="w-3.5 h-3.5" />
-        <span>{percentage}% Trust Score</span>
-        <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isOpen && "rotate-180")} />
+        <span>{percentage}% trust</span>
+        <ChevronDown className={cn("w-3 h-3 transition-transform duration-200 -ml-1", isOpen && "rotate-180")} aria-hidden="true" />
       </button>
 
       <AnimatePresence>

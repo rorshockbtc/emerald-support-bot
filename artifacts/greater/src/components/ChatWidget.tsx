@@ -275,9 +275,15 @@ export function ChatWidget({
    * with a light chat, or vice versa).
    */
   const [chatTheme, setChatTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window === 'undefined') return 'dark';
+    // Default to light so the widget reads as a magazine pull-out on
+    // top of the cream marketing site, not a dark tech-app overlay.
+    // Visitors who prefer the dark surface (the historical default,
+    // and the only mode the engine icons were tuned for) can flip it
+    // back via the moon/sun item in the header settings menu and the
+    // choice survives reloads.
+    if (typeof window === 'undefined') return 'light';
     const saved = window.localStorage.getItem('greater:chat-theme');
-    return saved === 'light' ? 'light' : 'dark';
+    return saved === 'dark' ? 'dark' : 'light';
   });
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1054,11 +1060,24 @@ export function ChatWidget({
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Close chat</TooltipContent>
                 </Tooltip>
-                <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4 text-white" />
+                {/* Avatar — editorial serif "G" monogram on a brand-pink
+                    field, replacing the previous lucide Bot icon on
+                    emerald. Wordmark-aligned so the widget header reads
+                    as a sibling of the site nav rather than as a
+                    third-party chat-app component. */}
+                <div
+                  className="w-8 h-8 rounded-full bg-[hsl(328_99%_58%)] flex items-center justify-center shrink-0 select-none"
+                  aria-hidden="true"
+                >
+                  <span
+                    className="text-white text-[15px] leading-none font-serif italic"
+                    style={{ fontFamily: 'var(--font-serif)', transform: 'translateY(-0.5px)' }}
+                  >
+                    G
+                  </span>
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-semibold text-[hsl(var(--widget-fg))] truncate flex items-center gap-1.5">
+                  <span className="chb-chat-meta text-[hsl(var(--widget-fg))] truncate flex items-center gap-2 text-[0.82rem]">
                     Started {formattedStartTime}
                     <ModeBadge
                       connected={pipe.connected}
@@ -1405,7 +1424,7 @@ export function ChatWidget({
                     className="mt-2 flex flex-wrap gap-2 px-1"
                     data-testid="suggested-prompts"
                   >
-                    <span className="w-full text-xs tracking-wide text-[hsl(var(--widget-muted))] mb-1">
+                    <span className="chb-chat-meta w-full text-[hsl(var(--widget-muted))] mb-1">
                       Try asking
                     </span>
                     {suggestedPrompts.map((prompt) => (
@@ -1422,10 +1441,11 @@ export function ChatWidget({
                           void handleSend(prompt);
                         }}
                         disabled={isPending}
-                        className="text-xs px-3 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="chb-suggestion-chip"
                         data-testid={`button-suggested-prompt-${prompt.slice(0, 16).replace(/\W+/g, '-').toLowerCase()}`}
                       >
-                        {prompt}
+                        <span aria-hidden="true" className="chb-suggestion-chip-mark">→</span>
+                        <span>{prompt}</span>
                       </button>
                     ))}
                   </div>
@@ -1437,13 +1457,21 @@ export function ChatWidget({
                     animate={{ opacity: 1 }}
                     className="flex w-full gap-3 mb-4 justify-start"
                   >
-                    <div className="w-7 h-7 rounded-full bg-emerald-600/20 border border-emerald-600/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <Bot className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    <div
+                      className="w-7 h-7 rounded-full bg-[hsl(328_99%_58%)]/15 border border-[hsl(328_99%_58%)]/40 flex items-center justify-center shrink-0 mt-0.5"
+                      aria-hidden="true"
+                    >
+                      <span
+                        className="text-[hsl(328_99%_45%)] text-[12px] leading-none italic animate-pulse"
+                        style={{ fontFamily: 'var(--font-serif)', transform: 'translateY(-0.5px)' }}
+                      >
+                        G
+                      </span>
                     </div>
-                    <div className="px-4 py-3 bg-[hsl(var(--widget-card))] border border-[hsl(var(--widget-border))] rounded-2xl rounded-tl-sm flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 bg-emerald-500/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-emerald-500/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-emerald-500/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="px-4 py-3 bg-[hsl(var(--widget-card))] border border-[hsl(var(--widget-border))] border-l-2 border-l-[hsl(328_99%_58%)]/40 rounded-md flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-[hsl(328_99%_58%)]/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-[hsl(328_99%_58%)]/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-[hsl(328_99%_58%)]/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   </motion.div>
                 )}
