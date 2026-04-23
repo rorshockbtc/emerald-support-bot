@@ -64,7 +64,7 @@ function Hero() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.55) 30%, hsl(var(--background) / 0.85) 62%, hsl(var(--background)) 100%)",
+              "linear-gradient(to bottom, hsl(var(--background) / 0.4) 0%, hsl(var(--background) / 0.15) 35%, hsl(var(--background) / 0.55) 75%, hsl(var(--background)) 100%)",
           }}
         />
       </div>

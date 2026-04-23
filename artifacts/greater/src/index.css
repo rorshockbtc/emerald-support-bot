@@ -283,10 +283,25 @@
   letter-spacing: 0.04em;
 }
 
+/**
+ * Section eyebrow / small label. The previous treatment was the
+ * default tech-template uppercase-mono-gray that shows up on every
+ * AI-generated marketing site. Now: small serif italic, sentence
+ * case, normal contrast — closer to a magazine attribution line
+ * than a CSS-framework eyebrow. Single CSS change ripples to every
+ * page that uses the class.
+ *
+ * Specifically NOT all-caps and NOT light-gray, by design.
+ */
 .chb-mono-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: hsl(var(--foreground) / 0.72);
+  text-transform: none;
 }
 
 .chb-display {
@@ -346,11 +361,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.625rem;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.95rem;
+  letter-spacing: -0.005em;
+  text-transform: none;
+  color: hsl(var(--foreground) / 0.72);
 }
 .chb-section-sigil::before {
   content: "";
@@ -451,12 +467,17 @@
     column-gap: 0;
   }
   .chb-editorial-entry > .chb-numeral {
-    font-size: 0.78rem;
-    font-family: var(--font-mono);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: hsl(var(--muted-foreground));
-    margin: 0 0 0.5rem;
+    /* On phones the numeral collapses to a small inline italic
+       serif label rather than the loud uppercase-mono treatment
+       it had previously, which read as the standard "data-table
+       column header" template tile. */
+    font-size: 0.95rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    letter-spacing: -0.005em;
+    text-transform: none;
+    color: hsl(var(--foreground) / 0.55);
+    margin: 0 0 0.4rem;
   }
 }
 

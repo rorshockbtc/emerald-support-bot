@@ -1,7 +1,7 @@
-import { Link } from "wouter";
-import { ArrowLeft, Check, Cpu, Hourglass, Rocket } from "lucide-react";
+import { Check, Cpu, Hourglass, Rocket } from "lucide-react";
 import { ContactCTASection } from "@/components/ContactCTASection";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { PageHero } from "@/components/EditorialHeader";
 
 /**
  * OpenClaw vision page.
@@ -19,23 +19,22 @@ export default function OpenClaw() {
   useDocumentTitle("OpenClaw");
   return (
     <>
-      <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <Link
-          href="/"
-          className="chb-mono-label text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 mb-8"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Home
-        </Link>
-
-        <p className="chb-mono-eyebrow text-muted-foreground mb-4">
-          Open infrastructure
-        </p>
-        <h1 className="chb-serif-headline text-4xl sm:text-5xl leading-[1.1]">
-          OpenClaw &mdash; the seam that keeps Greater honest.
-        </h1>
-
-        <div className="space-y-6 mt-10 text-base sm:text-lg text-foreground/85 leading-relaxed">
+      <PageHero
+        eyebrow="Open infrastructure"
+        edition="Brief № 03 — Spring 2026"
+        headline="The seam that keeps"
+        accent="Greater honest."
+        lede={
+          <>
+            BYO-LLM today. A signed peer-to-peer handshake next.
+            Production P2P inference with optional Lightning settlement
+            after that. The seams are all standard web primitives —
+            this just makes them visible.
+          </>
+        }
+      />
+      <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pb-24">
+        <div className="space-y-6 text-base sm:text-lg text-foreground/85 leading-relaxed">
           <p>
             Most &ldquo;AI assistants&rdquo; want you to send your data
             to their servers, then trust the answer that comes back.

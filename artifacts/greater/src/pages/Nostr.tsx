@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, Lock, Radio, Zap } from "lucide-react";
+import { ArrowRight, Lock, Radio, Zap } from "lucide-react";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { PageHero } from "@/components/EditorialHeader";
 
 /**
  * Vision page for Greater's NOSTR integration.
@@ -18,30 +19,21 @@ export default function Nostr() {
 
   return (
     <article className="pb-24">
-      <div className="border-b border-border bg-secondary/40">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-10">
-          <Link
-            href="/"
-            className="chb-mono-label text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Home
-          </Link>
-          <p className="chb-mono-eyebrow text-muted-foreground mt-6 mb-2">
-            Sovereign sync
-          </p>
-          <h1 className="chb-serif-headline text-3xl sm:text-5xl leading-[1.05] max-w-2xl">
-            NOSTR as a private, encrypted knowledge bus.
-          </h1>
-          <p className="text-base sm:text-lg text-muted-foreground mt-5 max-w-2xl leading-relaxed">
+      <PageHero
+        eyebrow="Sovereign sync"
+        edition="Brief № 02 — Spring 2026"
+        headline="NOSTR as a private,"
+        accent="encrypted knowledge bus."
+        lede={
+          <>
             Most AI tools force your knowledge into their database.
             Greater can pull from a NOSTR relay you control — publicly
             accessible, entirely private, event-sourced.
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-16">
 
         <section>
           <h2 className="text-xl font-semibold mb-4">The problem with every other KB</h2>
