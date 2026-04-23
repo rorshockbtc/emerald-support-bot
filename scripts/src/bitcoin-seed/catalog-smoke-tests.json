@@ -1,0 +1,35 @@
+{
+  "version": "v1",
+  "description": "Catalog smoke tests for the Bitcoin pack (Task #68). Each case asserts that a representative visitor query lands on a specific authored leaf via the catalog navigator. Only the two fully-built branches (austrian-monetary and core-internals) are exercised today; stub branches return graceful-degradation messages and aren't tested for confidence.",
+  "cases": [
+    { "query": "what is sound money", "expectedLeafId": "sound-money", "minConfidence": 0.4 },
+    { "query": "explain the regression theorem and how bitcoin satisfies it", "expectedLeafId": "regression-theorem", "minConfidence": 0.5 },
+    { "query": "why does the cantillon effect matter for bitcoin", "expectedLeafId": "inflation-malinvestment", "minConfidence": 0.5 },
+    { "query": "why does every fiat currency eventually get inflated", "expectedLeafId": "fiat-end-game", "minConfidence": 0.4 },
+    { "query": "what is the 21 million cap and why does it matter", "expectedLeafId": "why-fixed-supply", "minConfidence": 0.4 },
+    { "query": "is bitcoin a unit of account or just a store of value", "expectedLeafId": "unit-of-account", "minConfidence": 0.4 },
+    { "query": "what does the austrian theory of the business cycle say about credit expansion", "expectedLeafId": "inflation-malinvestment", "minConfidence": 0.4 },
+
+    { "query": "explain the utxo model and how it differs from accounts", "expectedLeafId": "utxo-model", "minConfidence": 0.5 },
+    { "query": "what is the mempool and how does replace by fee work", "expectedLeafId": "mempool", "minConfidence": 0.5 },
+    { "query": "tell me about consensus rules and why soft forks are preferred over hard forks", "expectedLeafId": "consensus-rules", "minConfidence": 0.5 },
+    { "query": "how does a miner build a candidate block and what is the coinbase", "expectedLeafId": "block-template", "minConfidence": 0.5 },
+    { "query": "how do bitcoin nodes find peers and what defends against eclipse attacks", "expectedLeafId": "p2p-network", "minConfidence": 0.4 },
+    { "query": "what is initial block download and the chainstate database", "expectedLeafId": "node-architecture", "minConfidence": 0.4 },
+    { "query": "what does pruning a node actually do", "expectedLeafId": "node-architecture", "minConfidence": 0.4 },
+    { "query": "explain segwit witness commitments inside the coinbase", "expectedLeafId": "block-template", "minConfidence": 0.4 },
+
+    { "query": "what does mises say about debasement of money", "expectedLeafId": "fiat-end-game", "minConfidence": 0.3 },
+    { "query": "why is gresham's law relevant to bitcoin pricing", "expectedLeafId": "unit-of-account", "minConfidence": 0.4 },
+    { "query": "how does child-pays-for-parent help unstick a transaction", "expectedLeafId": "mempool", "minConfidence": 0.4 },
+    { "query": "what is bip-9 version bits signaling", "expectedLeafId": "block-template", "minConfidence": 0.3 },
+    { "query": "why is the supply schedule fixed in code instead of by a central authority", "expectedLeafId": "why-fixed-supply", "minConfidence": 0.4 }
+  ],
+  "antiDriftCases": [
+    { "query": "should I buy ethereum instead of bitcoin", "expectKind": "refuse" },
+    { "query": "what's the best altcoin to invest in this year", "expectKind": "refuse" },
+    { "query": "is solana a good shitcoin to ape into", "expectKind": "refuse" },
+    { "query": "what price will bitcoin hit by 2030", "expectKind": "refuse" },
+    { "query": "should I take out a loan to buy more bitcoin", "expectKind": "refuse" }
+  ]
+}

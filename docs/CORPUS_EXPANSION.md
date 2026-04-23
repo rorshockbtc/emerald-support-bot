@@ -157,6 +157,26 @@ pnpm --filter @workspace/emerald run dev
 # Ask anything substantive → response should pause at least ~1.2s before appearing.
 ```
 
+## Catalog-first retrieval (Bitcoin pack, April 2026)
+
+The Bitcoin pack now ships a **catalog navigator** instead of the flat embedding pass on first load. The other six packs are unchanged and continue to embed.
+
+**Why we changed it.** The flat-embed path required a 30-minute first-load (Xenova model download + index of ~9k chunks). For Bitcoiners — the audience that will judge this bot hardest — that's a non-starter. They open the page, get a spinner, close the tab. Catalog-first gets first paint under 2 seconds with no model download at retrieval time.
+
+**How it works.** Hand-curated tree at `artifacts/emerald/public/catalog/bitcoin/`:
+
+- **L1 root** with 8 branches (Austrian monetary thought, Bitcoin Core internals, Lightning, Privacy, Wallets/keys, Mining/PoW, Whitepaper/precursors, Operational how-to).
+- **L2 leaves** under each branch — fully authored for `austrian-monetary` and `core-internals` (6 leaves each); the other 6 branches ship as `stub` for graceful degradation.
+- A small **BM25-lite ranker** (`artifacts/emerald/src/llm/catalog/navigator.ts`) walks ROOT → BRANCH → LEAF, scoring edges by label + summary + an optional hidden `searchTerms[]` array.
+- A **deterministic anti-drift gate** (`artifacts/emerald/src/llm/catalog/antiDrift.ts`) refuses shitcoin/scam/financial-advice queries before the navigator ever descends. Regex, not LLM — no chance of accidental engagement.
+- **Per-doc JIT layer** at `artifacts/emerald/public/corpus/bitcoin/<slug>.json` (built by `build-bitcoin-seed`) lets leaves reference long-form documents without bundling the full 11 MB seed.
+
+**Per-pack flag.** `SeedBundleConfig.useCatalog: true` short-circuits the flat-embed install path. `AskOptions.useCatalog: { packSlug }` routes `ask()` through the navigator. The fintech persona in `ChatWidget` injects the option; other personas continue to use the flat pipeline.
+
+**Smoke harness.** `pnpm --filter @workspace/scripts run bitcoin-catalog-smoke` runs 25 query→leaf cases (no transformers dep, deterministic). `pnpm --filter @workspace/scripts run bitcoin-conversation-smoke` runs a 25-turn adversarial conversation including shitcoin probes, financial-advice probes, and consistency checks (asking the same thing twice should land the same leaf).
+
+See `docs/INSTALL.md` for the operator-facing guide and the rationale for which pack should use catalog vs. flat-embed.
+
 ## Future work the JSON configs make easy
 
 - **Add the rest of the Mises Bitcoin Wire articles** (some test URLs in `mises-works.json` 404'd — search-replace the URLs with current canonical paths).

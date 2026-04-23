@@ -47,6 +47,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const OUTPUT_PATH = path.join(REPO_ROOT, "data", "seeds", "bitcoin.json");
+// Per-document JIT layer (Task #68). The catalog navigator returns
+// short curated briefs; deeper "show me the original passage" UX
+// will eventually fetch one document at a time from this directory
+// instead of loading the whole 11 MB monolith. Emitted alongside
+// the monolith so the cosine path remains intact.
+const PUBLIC_CORPUS_DIR = path.join(
+  REPO_ROOT,
+  "artifacts",
+  "emerald",
+  "public",
+  "corpus",
+  "bitcoin",
+);
 const PUBLIC_OUTPUT_PATH = path.join(
   REPO_ROOT,
   "artifacts",
@@ -801,6 +814,13 @@ async function main() {
   await writeJsonAtomic(OUTPUT_PATH, bundle);
   await writeJsonAtomic(PUBLIC_OUTPUT_PATH, bundle);
 
+  // Per-document JIT emission. One file per source document under
+  // public/corpus/bitcoin/<slug>.json plus an _index.json mapping
+  // every source_url → slug. The catalog UI eventually wants to let
+  // the visitor click a "[3]" citation and pull up the full passage
+  // without round-tripping the whole monolith.
+  await emitPerDocCorpus(bundle.documents);
+
   const totalChunks = countChunks(bundle.documents);
   const sizeMb = ((await readFile(OUTPUT_PATH)).byteLength / 1024 / 1024).toFixed(2);
   const elapsed = formatDuration(Date.now() - startedAt);
@@ -825,6 +845,86 @@ async function main() {
   );
   console.log(
     `Synced public copy → ${PUBLIC_OUTPUT_PATH} (gitignored; the web app fetches it on first load).`,
+  );
+}
+
+/**
+ * Slugify a source URL into a filesystem-safe filename. Stable across
+ * runs (same URL → same slug) so a partial rebuild doesn't orphan
+ * old per-doc files. Hash suffix disambiguates URLs whose human-readable
+ * portion collides (e.g. two BitcoinTalk threads with the same title
+ * but different message ids).
+ */
+function slugForSource(url: string): string {
+  const human = url
+    .replace(/^https?:\/\//, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase()
+    .slice(0, 80);
+  // 8-char hash suffix from a tiny FNV-1a; collision probability is
+  // negligible at our document counts but the suffix means we never
+  // have to special-case duplicates.
+  let h = 2166136261;
+  for (let i = 0; i < url.length; i++) {
+    h ^= url.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const hex = (h >>> 0).toString(16).padStart(8, "0");
+  return `${human}-${hex}`;
+}
+
+interface CorpusIndexEntry {
+  slug: string;
+  source_url: string;
+  source_label: string;
+  bias: string;
+  chunks: number;
+  words: number;
+}
+
+async function emitPerDocCorpus(docs: BundleDoc[]): Promise<void> {
+  await mkdir(PUBLIC_CORPUS_DIR, { recursive: true });
+  const index: CorpusIndexEntry[] = [];
+  // Track slugs we've written this run so a guaranteed-stale orphan
+  // sweep is a future enhancement; today we just overwrite in place.
+  for (const doc of docs) {
+    const slug = slugForSource(doc.source_url);
+    const filePath = path.join(PUBLIC_CORPUS_DIR, `${slug}.json`);
+    // The per-doc payload deliberately omits embeddings — the JIT
+    // surface is for "show me the original text", not for the cosine
+    // path which already lives in the monolith. Keeping these small
+    // (<50 KB each) is the whole point.
+    const payload = {
+      slug,
+      source_url: doc.source_url,
+      source_label: doc.source_label,
+      bias: doc.bias ?? "neutral",
+      chunks: doc.chunks,
+    };
+    await writeJsonAtomic(filePath, payload);
+    index.push({
+      slug,
+      source_url: doc.source_url,
+      source_label: doc.source_label,
+      bias: doc.bias ?? "neutral",
+      chunks: doc.chunks.length,
+      words: doc.chunks.reduce(
+        (n, c) => n + c.text.split(/\s+/).filter(Boolean).length,
+        0,
+      ),
+    });
+  }
+  // Sort the index for stable diffs across rebuilds.
+  index.sort((a, b) => a.slug.localeCompare(b.slug));
+  await writeJsonAtomic(path.join(PUBLIC_CORPUS_DIR, "_index.json"), {
+    version: "v1",
+    generated_at: new Date().toISOString(),
+    documents: index,
+  });
+  console.log(
+    `  per-doc JIT: wrote ${index.length} files → ${PUBLIC_CORPUS_DIR}`,
   );
 }
 

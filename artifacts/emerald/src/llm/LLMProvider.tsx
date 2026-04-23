@@ -55,6 +55,7 @@ import {
   cosine,
 } from "./vectorStore";
 import { lexicalTopK, fuseRetrievals } from "./lexicalIndex";
+import { navigateCatalog, makeFetchLoader } from "./catalog/navigator";
 import {
   setWikiCompilerModelReady,
   getOrCompressWikiIndex,
@@ -127,14 +128,33 @@ interface SeedBundleConfig {
   privateOverlay?: boolean;
   /** Friendly label for the private-overlay job grouping. */
   privateJobLabel?: string;
+  /**
+   * Catalog-first retrieval (Task #68). When true, this pack does NOT
+   * embed the monolithic seed bundle on first load — instead, the
+   * chat widget walks a hand-curated catalog tree under
+   * `public/catalog/<slug>/` and answers from leaf briefs with
+   * structural citations. Trades the 30-min first-load embedding
+   * pass for a ~3 KB root-index fetch and a per-turn 2-4 small JSON
+   * fetches. See `./catalog/navigator.ts`.
+   *
+   * Other packs continue to use the cosine path until they're
+   * authored into catalogs of their own.
+   */
+  useCatalog?: boolean;
 }
 
 const SEED_BUNDLES: Record<string, SeedBundleConfig> = {
   bitcoin: {
     slug: "bitcoin",
-    version: "v1",
+    // Bumped to v2 for the catalog-first cutover (Task #68). The
+    // version isn't actually consulted by the install path when
+    // `useCatalog` is true (no embedding happens), but bumping it
+    // documents the cutover and forces any latent stale flags from
+    // earlier installs to be replaced.
+    version: "v2",
     jobLabel: "Bitcoin knowledge bundle",
     personaSlug: "fintech",
+    useCatalog: true,
   },
   startups: {
     slug: "startups",
@@ -585,6 +605,19 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (installedBundleSlugsRef.current.has(slug)) return;
+
+      // Catalog-first packs (Task #68) never run the embedding pass.
+      // The chat widget calls navigateCatalog() directly via the
+      // `useCatalog` AskOption; this branch just marks the slug as
+      // "installed" so requestSeedBundle calls become no-ops and the
+      // bundle-loading-progress UI doesn't tick. We deliberately do
+      // NOT stamp a meta flag here: a future revert of useCatalog
+      // should auto-trigger a real install on the next page load.
+      if (cfg.useCatalog) {
+        installedBundleSlugsRef.current.add(slug);
+        return;
+      }
+
       const flagKey = bundleFlagKey(slug);
       const jobId = bundleJobId(slug);
       const jobRoot = bundleRootUrl(slug);
@@ -1444,6 +1477,81 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           console.warn("[LLMProvider] qa-cache lookup failed:", err);
         }
       }
+      // Catalog-first retrieval (Task #68). When the caller passes
+      // `useCatalog`, we bypass the cosine vector store entirely and
+      // walk the hand-curated catalog tree under the configured base
+      // URL. This is the Bitcoin pack's path: ROOT → BRANCH → LEAF
+      // with deterministic ranking and a deterministic anti-drift
+      // gate, no embedding needed. Designed to work BEFORE the WebGPU
+      // model is ready — leaf briefs render verbatim with built-in
+      // [N] markers; once the model is ready we polish the brief
+      // into a conversational answer keyed to the user's question.
+      // See artifacts/emerald/src/llm/catalog/navigator.ts.
+      if (options?.useCatalog) {
+        const { packSlug, catalogBaseUrl, recentLeafIds } = options.useCatalog;
+        options.onTelemetry?.("[Catalog]", `Walking catalog for pack "${packSlug}"…`);
+        try {
+          const loader = makeFetchLoader(catalogBaseUrl);
+          const result = await navigateCatalog(userMessage, packSlug, {
+            loader,
+            history,
+            recentLeafIds,
+            generate:
+              status === "ready"
+                ? async (msgs, maxNew) => {
+                    const text = await callWorker<string>("generate", {
+                      messages: msgs,
+                      maxNewTokens: maxNew ?? 320,
+                    });
+                    return typeof text === "string" ? text : String(text);
+                  }
+                : undefined,
+            onTelemetry: options.onTelemetry,
+          });
+          options.onTelemetry?.(
+            "[Catalog]",
+            `Result: kind=${result.kind} hops=${result.hops.length}${result.landedLeafId ? ` leaf=${result.landedLeafId}` : ""}`,
+          );
+          return {
+            text: result.text,
+            source: "local",
+            thoughtTrace: {
+              chunks: result.chunks,
+              reasoning: result.reasoning,
+            },
+            // Surface landedLeafId for the chat widget to feed back
+            // into recentLeafIds on subsequent turns. The field is
+            // optional on LocalAnswer so downstream callers that
+            // don't know about it just ignore it.
+            ...(result.landedLeafId
+              ? { catalogLeafId: result.landedLeafId }
+              : {}),
+          };
+        } catch (err) {
+          // Catalog failures are loud (the file genuinely couldn't be
+          // loaded) but must not crash the chat. Fall through to a
+          // graceful "I'm having trouble loading my notes right now"
+          // rather than throw — the LOCAL · PRIVATE badge stays honest.
+          console.error("[LLMProvider] Catalog navigation failed:", err);
+          options.onTelemetry?.(
+            "[Catalog]",
+            `Navigation error: ${(err as Error).message}`,
+          );
+          return {
+            text: [
+              "I'm having trouble loading my notes for that one right now — likely a transient network issue.",
+              "",
+              "Try asking again in a moment, or use the contact form on this page if it keeps happening.",
+            ].join("\n"),
+            source: "local",
+            thoughtTrace: {
+              chunks: [],
+              reasoning: `Catalog navigation failed: ${(err as Error).message}`,
+            },
+          };
+        }
+      }
+
       if (status !== "ready") {
         throw new Error("Local model not ready");
       }

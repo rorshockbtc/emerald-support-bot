@@ -1,0 +1,7 @@
+{
+  "id": "mining-pow",
+  "title": "Mining and proof of work",
+  "summary": "Why PoW, ASICs and centralization, pool dynamics, difficulty adjustment, the security budget question, energy use in context.",
+  "stub": true,
+  "edges": []
+}

@@ -58,6 +58,14 @@ The bot is instructed in its system prompt to **always link out** to the canonic
 - **Bias tag:** `neutral`
 - **Source type:** `nakamoto`
 
+## Catalog leaves (Bitcoin pack, April 2026)
+
+In addition to the long-form corpus chunks above, the Bitcoin pack now ships a **hand-curated catalog** at `artifacts/emerald/public/catalog/bitcoin/`. Each catalog leaf carries its own `sources[]` array — one entry per primary source, with `url` and `title`. These are structural citations: the navigator returns them with every answer, regardless of whether the cloud LLM ran.
+
+The leaves cite the same six source institutions documented above (OpTech, bitcoin/bitcoin commits, bitcoinknots/bitcoin commits, BitcoinTalk, Mises Institute, Nakamoto Institute) plus direct primary sources like the BIPs repository. Citing a source from a leaf carries the same attribution obligation as citing it from a chunk — the canonical URL must be preserved.
+
+When you author a new leaf, prefer 2–4 high-quality sources over 10 weak ones. The navigator returns all of them; visitors who want the deep dive click through.
+
 ## Adding new sources
 
 To add a new Mises or Nakamoto work, edit the corresponding JSON file in `scripts/src/bitcoin-seed/` and re-run `pnpm --filter @workspace/scripts run build-bitcoin-seed`. Each entry needs only `url` and (optionally) `label` + `author`. The build script handles fetching, chunking, and caching — broken URLs are logged and skipped, never breaking the build.

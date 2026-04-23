@@ -300,6 +300,13 @@ export interface LocalAnswer {
   text: string;
   source: ResponseSource;
   thoughtTrace?: ThoughtTrace;
+  /**
+   * Catalog leaf id the navigator landed on, when the answer came
+   * from the catalog path (Task #68). The chat widget feeds this
+   * back into the next turn's `useCatalog.recentLeafIds` so
+   * multi-turn threads stay coherent within a branch.
+   */
+  catalogLeafId?: string;
 }
 
 /**
@@ -369,4 +376,17 @@ export interface AskOptions {
    * Glass Engine terminal panel. Never receives raw prompt text.
    */
   onTelemetry?: (tag: string, text: string) => void;
+  /**
+   * Catalog-first retrieval (Task #68). When set, `ask()` skips the
+   * cosine vector store entirely and walks the hand-curated catalog
+   * tree under `<catalogBaseUrl>/index.json` instead. Only the
+   * Bitcoin pack ships a catalog today; other packs continue to
+   * use the embedding path. The chat widget passes recentLeafIds
+   * from the prior bot turn so multi-turn threads stay coherent.
+   */
+  useCatalog?: {
+    packSlug: string;
+    catalogBaseUrl: string;
+    recentLeafIds?: string[];
+  };
 }

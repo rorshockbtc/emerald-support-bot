@@ -11,6 +11,8 @@
     "build-qa-bank": "tsx ./src/build-qa-bank.ts",
     "check-optech-rss": "tsx ./src/check-optech-rss.ts",
     "smoke-test": "tsx --import ./src/stub-sharp.cjs ./src/smoke-test.ts",
+    "bitcoin-catalog-smoke": "tsx ./src/bitcoin-catalog-smoke.ts",
+    "bitcoin-conversation-smoke": "tsx ./src/bitcoin-conversation-smoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

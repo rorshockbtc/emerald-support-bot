@@ -82,6 +82,24 @@ Common causes of regressions:
 2. **An irrelevant test now scores too high**: junk content has been added that's semantically close to common queries. This is a real bug — investigate which new doc is at fault and remove it.
 3. **All tests dropped a few points**: something changed about how chunks are produced (different chunk size, different cleaner). Check the build script's git diff.
 
+## Catalog smoke harness (Bitcoin pack, April 2026)
+
+The Bitcoin pack also ships a **catalog smoke harness** that's separate from the embedding-based smoke test above. It validates the catalog-first retrieval path described in `docs/CORPUS_EXPANSION.md`.
+
+```bash
+pnpm --filter @workspace/scripts run bitcoin-catalog-smoke
+pnpm --filter @workspace/scripts run bitcoin-conversation-smoke
+```
+
+Both run in plain Node.js with no embedding model dependency — they exercise the BM25-lite navigator and the anti-drift gate directly.
+
+- **`bitcoin-catalog-smoke`** — 25 cases at `scripts/src/bitcoin-seed/catalog-smoke-tests.json`. Each case asserts either `query → leaf-id` (with min hops and min confidence), `query → refused` (anti-drift gate fired), or `query → clarify`/`stub` (graceful degradation). Adding a case is one JSON object; no TypeScript required.
+- **`bitcoin-conversation-smoke`** — 25-turn conversation simulator at `scripts/src/bitcoin-conversation-smoke.ts`. Mixes technical questions, philosophical probes, repeated questions (consistency check — the same question must land the same leaf twice), and adversarial probes (shitcoin mentions, leverage / loan questions, price predictions). The recency-boost ring buffer (5 most recent landed leaves) is exercised here.
+
+Both runners exit non-zero on any failure and print the failing case with the navigator's hop trace, so you can see exactly which edge mis-ranked.
+
+When the catalog grows, add cases to `catalog-smoke-tests.json`. When you add a new branch with leaves, add at least one case per leaf. When you add a new anti-drift category, add at least one positive and one negative case (a query that should fire the gate, and one that mentions a similar word but should *not* fire — false-positive guard).
+
 ## Why this exists
 
 The Bitcoin demo bot is a retrieval-augmented assistant, not a fine-tuned model. Its quality is **entirely a function of the corpus**. The smoke test is the lightweight, deterministic check that catches the failure mode that would otherwise only be caught by a visitor — "I asked it about RBF and it gave me an answer about Austrian economics."

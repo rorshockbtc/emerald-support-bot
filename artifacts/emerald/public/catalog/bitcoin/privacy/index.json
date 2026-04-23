@@ -1,0 +1,7 @@
+{
+  "id": "privacy",
+  "title": "On-chain privacy and chain analysis",
+  "summary": "Address reuse, coinjoin, payjoin, silent payments, what surveillance firms can actually see, taproot's privacy implications.",
+  "stub": true,
+  "edges": []
+}

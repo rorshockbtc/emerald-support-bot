@@ -290,6 +290,12 @@ export function ChatWidget({
    * call shows the notice; subsequent ones silently route to local.
    */
   const cloudCapNoticeShownRef = useRef<boolean>(false);
+  // Catalog-first sticky context (Task #68). Tracks the leaf ids the
+  // navigator landed on across the current chat session so multi-turn
+  // threads stay on a coherent branch unless the visitor visibly
+  // switches topic. Capped at the most recent 5; older entries fall
+  // off so a long session doesn't permanently bias the ranker.
+  const recentCatalogLeafIdsRef = useRef<string[]>([]);
   /**
    * Stable id of the seeded welcome message. The widget always
    * injects a welcome turn (with or without the `welcomeMessage`
@@ -609,6 +615,22 @@ export function ChatWidget({
       if (personaSlug) {
         askOptions = { ...(askOptions ?? {}), personaSlug };
       }
+      // Catalog-first retrieval (Task #68). The fintech persona is
+      // backed by the Bitcoin pack, which has been migrated off the
+      // 11 MB monolithic seed bundle and onto the hand-curated
+      // catalog tree under public/catalog/bitcoin/. Other personas
+      // continue on the cosine path until they're authored too.
+      // BASE_URL already ends with "/" by Vite convention.
+      if (personaSlug === 'fintech') {
+        askOptions = {
+          ...(askOptions ?? {}),
+          useCatalog: {
+            packSlug: 'bitcoin',
+            catalogBaseUrl: `${import.meta.env.BASE_URL}catalog/bitcoin/`,
+            recentLeafIds: recentCatalogLeafIdsRef.current.slice(),
+          },
+        };
+      }
       // Carry the refusal scope so the strict-grounding refusal in
       // LLMProvider.ask can name THIS bot's territory instead of
       // falling back to generic copy. Always added when supplied,
@@ -703,6 +725,19 @@ export function ChatWidget({
         isHardRefusal: showRefusalActions,
       };
       setMessages((prev) => [...prev, botMsg]);
+      // Push the catalog leaf id (when present) into the sticky-context
+      // ring buffer so the next turn's navigator can prefer the same
+      // branch on near-tie scores. De-duped so revisiting a leaf
+      // doesn't crowd out the rest of the trail. Capped at 5.
+      if (answer.catalogLeafId) {
+        const next = [
+          answer.catalogLeafId,
+          ...recentCatalogLeafIdsRef.current.filter(
+            (id) => id !== answer.catalogLeafId,
+          ),
+        ].slice(0, 5);
+        recentCatalogLeafIdsRef.current = next;
+      }
     } catch (err) {
       // OpenClaw failures should NOT fall back to the cloud — the
       // visitor explicitly opted into BYO inference. Surface the

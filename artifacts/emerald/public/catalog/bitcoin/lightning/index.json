@@ -1,0 +1,7 @@
+{
+  "id": "lightning",
+  "title": "Lightning Network",
+  "summary": "Payment channels, HTLCs, routing, watchtowers, splicing, the BOLT specs.",
+  "stub": true,
+  "edges": []
+}
