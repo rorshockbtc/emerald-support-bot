@@ -13,8 +13,8 @@ You want to run the bot exactly as it ships on hire.colonhyphenbracket.pink, bra
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/colonhyphenbracket/greater
-cd greater
+git clone https://github.com/rorshockbtc/greater-than
+cd greater-than
 pnpm install
 ```
 
@@ -22,9 +22,11 @@ pnpm install
 
 Copy `.env.example` to `.env` and fill in:
 
-- `DATABASE_URL` — PostgreSQL (a free tier on Neon or Supabase is fine)
-- `TOGETHER_API_KEY` — Together.AI key (Llama 3.3 70B, ~$0.88/1M tokens, used for the cloud-fallback path)
-- `VITE_WEB3FORMS_ACCESS_KEY` — Web3Forms key for the contact form
+- `DATABASE_URL` — PostgreSQL (a free tier on Neon or Supabase is fine). Required.
+- `TOGETHER_API_KEY` — Together.AI key (Llama 3.3 70B, ~$0.88/1M tokens, used for the cloud-fallback path). Optional: without it the bot answers from the catalog brief verbatim.
+- `VITE_WEB3FORMS_ACCESS_KEY` — Web3Forms key for the contact form. Optional unless you want the contact form to actually deliver mail.
+- `ADMIN_FEEDBACK_KEY` — bearer token for the `/admin/feedback` page. Optional unless you plan to use the admin UI.
+- `GITHUB_TOKEN` — read-only GitHub token. Optional, only needed when rebuilding the Bitcoin seed corpus (the public anonymous rate limit otherwise stalls the build partway through).
 
 The Bitcoin pack runs **catalog-first** in the browser. There is no embedding model download, no 30-minute warm-up. First paint is under 2 seconds on a cold load. The cloud LLM only fires when the navigator hands off — typically only on the answer-polishing step, never on retrieval.
 

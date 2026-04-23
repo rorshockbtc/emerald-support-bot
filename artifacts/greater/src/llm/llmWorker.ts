@@ -60,7 +60,16 @@ function readProgress(p: ProgressInfo): {
 
 async function loadAll() {
   try {
+    // dtype: "fp32" is required on @huggingface/transformers v4.x for
+    // bge-small (and other BERT-family extractors). Without it the
+    // pipeline auto-selects a quantized variant whose ORT tensors come
+    // back with `data location: undefined`, and every embed call throws
+    // `invalid data location: undefined for input "input_ids"`. Catalog-
+    // first packs bypass the embedder entirely (so the live Bitcoin demo
+    // is unaffected), but contributor-shipped flat-embed packs need this
+    // to actually run. Keep this dtype pinned.
     embedder = await pipeline("feature-extraction", EMBEDDER_MODEL_ID, {
+      dtype: "fp32",
       progress_callback: (p: ProgressInfo) => {
         const { file, progress, status } = readProgress(p);
         send({ type: "progress", stage: "embedder", file, progress, status });
