@@ -648,6 +648,14 @@ export function ChatWidget({
             packSlug: 'bitcoin',
             catalogBaseUrl: `${import.meta.env.BASE_URL}catalog/bitcoin/`,
             recentLeafIds: recentCatalogLeafIdsRef.current.slice(),
+            // JIT-fetch up to 3 per-doc local copies per turn so the
+            // trace panel shows substantive source-derived bodies
+            // (excerpt + every citing leaf's brief), not just the
+            // inline excerpt. Files live under public/corpus/bitcoin/
+            // and are emitted by `build-catalog-corpus`.
+            jitLoadBodies: true,
+            corpusBaseUrl: `${import.meta.env.BASE_URL}corpus/bitcoin/`,
+            jitMaxDocs: 3,
           },
         };
       }

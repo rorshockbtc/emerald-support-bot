@@ -68,7 +68,29 @@ interface CorpusDocPayload {
   source_url: string;
   source_label: string;
   excerpt: string;
-  cited_by: { pack: string; leaf_id: string; leaf_label: string }[];
+  /**
+   * Source-derived body text. Concatenates the source excerpt with
+   * the full brief of every citing leaf (the curator's hand-authored
+   * long-form analysis grounded in this source). The runtime
+   * navigator can JIT-load this and pass it to the trace panel
+   * as the chunk body — see the `jitLoadBodies` option in
+   * navigator.ts.
+   *
+   * If `build-bitcoin-seed` is run with network access, that script
+   * overwrites these files with the actual upstream-fetched chunked
+   * page text. This emitter is the offline-deterministic fallback
+   * that keeps every cited source resolvable in CI.
+   */
+  body: string;
+  cited_by: {
+    pack: string;
+    leaf_id: string;
+    leaf_label: string;
+    /** The citing leaf's full brief, included so the per-doc file
+     * contains substantive source-derived content even when the
+     * upstream-fetch step has not been run. */
+    leaf_brief: string;
+  }[];
   generated_by: "build-catalog-corpus";
   generated_at: string;
 }
@@ -78,6 +100,25 @@ interface CorpusIndexEntry {
   source_url: string;
   source_label: string;
   cited_by_count: number;
+}
+
+/**
+ * Compose the per-doc body from the excerpt + every citing leaf's
+ * brief. The result is what the runtime trace panel shows as the
+ * "expanded local copy" content — substantial source-derived text,
+ * not just a one-line excerpt.
+ */
+function composeBody(
+  excerpt: string,
+  cited_by: { leaf_label: string; leaf_brief: string }[],
+): string {
+  const sections: string[] = [];
+  if (excerpt) sections.push(`Source excerpt:\n${excerpt}`);
+  for (const c of cited_by) {
+    if (!c.leaf_brief) continue;
+    sections.push(`Cited by leaf "${c.leaf_label}":\n${c.leaf_brief}`);
+  }
+  return sections.join("\n\n---\n\n");
 }
 
 async function listPacks(): Promise<string[]> {
@@ -119,21 +160,32 @@ async function emitForPack(pack: string): Promise<{ docs: number; sources: numbe
     const leafId = leaf.id ?? path.basename(leafFile, ".json");
     const leafLabel = leaf.label ?? leafId;
 
+    const leafBrief = leaf.brief ?? "";
     for (const src of leaf.sources) {
       if (!src?.url) continue;
       const slug = src.internalSlug ?? slugForSource(src.url);
       const existing = bySlug.get(slug);
+      const cite = {
+        pack,
+        leaf_id: leafId,
+        leaf_label: leafLabel,
+        leaf_brief: leafBrief,
+      };
       if (existing) {
-        // First-cite wins for label/excerpt; later cites just register.
-        existing.cited_by.push({ pack, leaf_id: leafId, leaf_label: leafLabel });
+        // First-cite wins for label/excerpt; later cites just register
+        // and contribute their brief to the body.
+        existing.cited_by.push(cite);
+        existing.body = composeBody(existing.excerpt, existing.cited_by);
         continue;
       }
+      const cited_by = [cite];
       bySlug.set(slug, {
         slug,
         source_url: src.url,
         source_label: src.label,
         excerpt: src.excerpt,
-        cited_by: [{ pack, leaf_id: leafId, leaf_label: leafLabel }],
+        body: composeBody(src.excerpt, cited_by),
+        cited_by,
         generated_by: "build-catalog-corpus",
         // Pinned generated_at so reruns produce stable diffs unless
         // the catalog actually changed. Using a sentinel string here

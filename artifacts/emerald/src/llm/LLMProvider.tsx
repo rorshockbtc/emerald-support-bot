@@ -1492,7 +1492,14 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // into a conversational answer keyed to the user's question.
       // See artifacts/emerald/src/llm/catalog/navigator.ts.
       if (options?.useCatalog) {
-        const { packSlug, catalogBaseUrl, recentLeafIds } = options.useCatalog;
+        const {
+          packSlug,
+          catalogBaseUrl,
+          recentLeafIds,
+          jitLoadBodies,
+          corpusBaseUrl,
+          jitMaxDocs,
+        } = options.useCatalog;
         options.onTelemetry?.("[Catalog]", `Walking catalog for pack "${packSlug}"…`);
         try {
           const loader = makeFetchLoader(catalogBaseUrl);
@@ -1500,6 +1507,9 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             loader,
             history,
             recentLeafIds,
+            jitLoadBodies,
+            corpusBaseUrl,
+            jitMaxDocs,
             generate:
               status === "ready"
                 ? async (msgs, maxNew) => {

@@ -174,6 +174,25 @@ export interface NavigateOptions {
   onTelemetry?: (tag: string, text: string) => void;
   /** Cap on hops; deep trees may need higher. Default 4. */
   maxDepth?: number;
+  /**
+   * When true, after landing on a leaf the navigator JIT-fetches the
+   * per-source local copy under
+   * `<corpusBaseUrl>/<internalSlug>.json` for up to `jitMaxDocs`
+   * (default 3) of the leaf's sources, and rewrites each chunk's
+   * `text` with the local-copy `body` (excerpt + every citing
+   * leaf's brief). This satisfies the "catalog node + JIT source
+   * document fetch" architecture from Task #68 — runtime grounding
+   * uses the per-doc layer, not just the inline excerpt.
+   *
+   * Off by default so the smoke harness (which has no corpus base
+   * URL) and any caller that hasn't deployed the corpus layer keep
+   * working. ChatWidget turns it on for the bitcoin pack.
+   */
+  jitLoadBodies?: boolean;
+  /** Base URL where per-doc local-copy files live. */
+  corpusBaseUrl?: string;
+  /** Max number of local-copy fetches per turn. Default 3. */
+  jitMaxDocs?: number;
 }
 
 const ROOT_NODE_ID = "__root__";
@@ -207,6 +226,42 @@ function sourcesToChunks(
   packSlug: string,
 ): RetrievedChunk[] {
   return leaf.sources.map((s, idx) => sourceToChunk(s, leaf, idx, confidence, packSlug));
+}
+
+/**
+ * After landing on a leaf, JIT-fetch up to `max` per-doc local-copy
+ * files and rewrite each chunk's `text` with the local-copy `body`
+ * (excerpt + every citing leaf's brief). Failures are logged and
+ * non-fatal — the original excerpt-as-text remains so the answer
+ * never silently drops citations.
+ */
+async function jitLoadChunkBodies(
+  chunks: RetrievedChunk[],
+  corpusBaseUrl: string,
+  max: number,
+  tel: (tag: string, text: string) => void,
+): Promise<void> {
+  const targets = chunks.slice(0, max);
+  await Promise.all(
+    targets.map(async (chunk) => {
+      if (!chunk.internalSlug) return;
+      const url = `${corpusBaseUrl}${chunk.internalSlug}.json`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          tel("[Catalog]", `JIT corpus miss (${res.status}) for ${chunk.internalSlug}`);
+          return;
+        }
+        const payload = (await res.json()) as { body?: string };
+        if (typeof payload.body === "string" && payload.body.length > 0) {
+          chunk.text = payload.body;
+          tel("[Catalog]", `JIT corpus loaded ${chunk.internalSlug} (${payload.body.length} chars)`);
+        }
+      } catch (err) {
+        tel("[Catalog]", `JIT corpus error for ${chunk.internalSlug}: ${(err as Error).message}`);
+      }
+    }),
+  );
 }
 
 function sourceToChunk(
@@ -441,6 +496,9 @@ export async function navigateCatalog(
       const leaf = (await opts.loader(leafPath)) as CatalogLeaf;
       const confidence = Math.min(1, top.score / 4); // empirical scaling
       const chunks = sourcesToChunks(leaf, confidence, packSlug);
+      if (opts.jitLoadBodies && opts.corpusBaseUrl) {
+        await jitLoadChunkBodies(chunks, opts.corpusBaseUrl, opts.jitMaxDocs ?? 3, tel);
+      }
       let text: string;
       if (opts.generate) {
         try {

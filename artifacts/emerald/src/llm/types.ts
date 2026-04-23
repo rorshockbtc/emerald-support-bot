@@ -399,5 +399,17 @@ export interface AskOptions {
     packSlug: string;
     catalogBaseUrl: string;
     recentLeafIds?: string[];
+    /**
+     * When true, after navigating to a leaf the navigator JIT-fetches
+     * up to `jitMaxDocs` per-source local-copy files from
+     * `<corpusBaseUrl>/<internalSlug>.json` and rewrites each chunk's
+     * `text` with the local-copy `body`. This makes the trace panel
+     * surface substantive source-derived bodies instead of only the
+     * inline excerpt — the "catalog node + JIT source document fetch"
+     * runtime architecture from Task #68.
+     */
+    jitLoadBodies?: boolean;
+    corpusBaseUrl?: string;
+    jitMaxDocs?: number;
   };
 }
