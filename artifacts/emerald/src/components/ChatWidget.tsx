@@ -475,7 +475,14 @@ export function ChatWidget({
       !!activeBiasOption &&
       pipe.activeBiasId !== undefined &&
       pipe.activeBiasId !== 'neutral';
-    if (personaSlug && !biasIsNonNeutral) {
+    // Catalog-mode personas (Task #68 — currently fintech/Bitcoin)
+    // MUST bypass the QA cache. The whole point of catalog-first
+    // retrieval is that every Bitcoin answer carries structural
+    // citations from a curated leaf and passes through the anti-drift
+    // gate; a stale qa-bank cache hit would short-circuit both. The
+    // cache layer remains active for every other persona.
+    const personaUsesCatalog = personaSlug === 'fintech';
+    if (personaSlug && !biasIsNonNeutral && !personaUsesCatalog) {
       try {
         const cacheStart = performance.now();
         const hit = await llm.tryQaCache(userText, personaSlug);

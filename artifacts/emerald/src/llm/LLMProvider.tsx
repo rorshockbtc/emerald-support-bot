@@ -1447,8 +1447,12 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // verbatim instead of doing model inference. This is BOTH the
       // demo-quality lever (every cached answer is hand-curated, no
       // hallucination) AND the cost lever (zero model tokens spent).
-      // Skipped silently when no slug, no bank, or no embedder.
-      if (options?.personaSlug) {
+      // Skipped silently when no slug, no bank, or no embedder. Also
+      // skipped when `useCatalog` is set — catalog-mode personas
+      // (Bitcoin, Task #68) require every answer to come from the
+      // navigator so structural citations and the anti-drift gate are
+      // never bypassed by a stale qa-bank match.
+      if (options?.personaSlug && !options.useCatalog) {
         options.onTelemetry?.("[QACache]", `Checking curated bank for persona "${options.personaSlug}"…`);
         try {
           const hit = await lookupCachedAnswerRef.current?.(
