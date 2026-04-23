@@ -76,6 +76,18 @@ export const SendMessageBody = zod.object({
     .describe(
       'Human-readable label of the active bias (e.g. \"Core\",\n\"Knots\"). Echoed back on the response so the per-message\nbias chip stays truthful even if the user toggles bias\nafter sending.\n',
     ),
+  personaSlug: zod
+    .string()
+    .optional()
+    .describe(
+      'Slug of the active persona at send time (e.g. \"greater\"\nfor the homepage meta-bot, \"fintech\" for the FinTech\ntemplate demo). Drives persona-aware system prompts and\ntells the server whether a generic DB-article fallback\nis appropriate (it is not, for purpose-built personas\nthat bring their own corpus).\n',
+    ),
+  systemPrompt: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional client-supplied system prompt. When present, the\nserver uses this verbatim as the base system instruction\ninstead of its own persona default. The local in-browser\nmodel already runs on this exact prompt; passing it\nthrough keeps the cloud fallback's voice and grounding\nidentical to local replies, which prevents the cloud\nfrom inventing a different product identity for the bot.\n",
+    ),
 });
 
 export const SendMessageResponse = zod.object({

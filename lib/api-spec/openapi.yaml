@@ -238,6 +238,25 @@ components:
             "Knots"). Echoed back on the response so the per-message
             bias chip stays truthful even if the user toggles bias
             after sending.
+        personaSlug:
+          type: string
+          description: |
+            Slug of the active persona at send time (e.g. "greater"
+            for the homepage meta-bot, "fintech" for the FinTech
+            template demo). Drives persona-aware system prompts and
+            tells the server whether a generic DB-article fallback
+            is appropriate (it is not, for purpose-built personas
+            that bring their own corpus).
+        systemPrompt:
+          type: string
+          description: |
+            Optional client-supplied system prompt. When present, the
+            server uses this verbatim as the base system instruction
+            instead of its own persona default. The local in-browser
+            model already runs on this exact prompt; passing it
+            through keeps the cloud fallback's voice and grounding
+            identical to local replies, which prevents the cloud
+            from inventing a different product identity for the bot.
       required:
         - message
         - sessionId

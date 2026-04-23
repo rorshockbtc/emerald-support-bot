@@ -51,13 +51,52 @@ router.post("/chat", chatLimiter, async (req, res): Promise<void> => {
     return;
   }
 
-  const { message, sessionId, biasId, biasLabel } = parsed.data;
+  const { message, sessionId, biasId, biasLabel, personaSlug } = parsed.data;
+
+  /* ---------------------------------------------------------------- */
+  /*  Normalize the client-supplied systemPrompt exactly once.       */
+  /*  Two reasons:                                                   */
+  /*    1. Length cap. Accepting an arbitrary-size prompt over the   */
+  /*       network is a cheap abuse vector — a caller could push a  */
+  /*       huge string and consume our Together AI budget on a     */
+  /*       single request. 8 KB is well above any honest persona   */
+  /*       prompt and well below anything that would meaningfully  */
+  /*       impact our token budget.                                */
+  /*    2. Trim once and use the trimmed value for *both* the      */
+  /*       DB-search gate below and the prompt-selection logic in  */
+  /*       llm.ts. Without this, a whitespace-only payload would   */
+  /*       skip the DB search (treated as "client supplied a      */
+  /*       prompt") yet fall through to the persona default in    */
+  /*       prompt selection — silent context loss.                */
+  /* ---------------------------------------------------------------- */
+  const MAX_CLIENT_SYSTEM_PROMPT_BYTES = 8 * 1024;
+  const rawSystemPrompt = parsed.data.systemPrompt?.trim() ?? "";
+  const systemPrompt =
+    rawSystemPrompt.length > 0 &&
+    rawSystemPrompt.length <= MAX_CLIENT_SYSTEM_PROMPT_BYTES
+      ? rawSystemPrompt
+      : undefined;
+
   const scrubbedMessage = scrubPII(message);
   const intentResult = matchIntent(message);
 
+  /* ---------------------------------------------------------------- */
+  /*  DB article fuzzy-search is the legacy demo path. The articles  */
+  /*  table is seeded with Bitcoin / Blockstream-flavored entries    */
+  /*  for the original FinTech demo, so running an ILIKE match for   */
+  /*  every visitor — including the homepage Greater meta-bot —     */
+  /*  was injecting Liquid / Lightning context into prompts about   */
+  /*  the Greater product itself, then the LLM dutifully wrote      */
+  /*  pages of Blockstream copy. Now we only run it for the         */
+  /*  fintech persona (its actual purpose) and only when the        */
+  /*  client did not bring its own systemPrompt (which already      */
+  /*  carries the persona's authoritative grounding).               */
+  /* ---------------------------------------------------------------- */
+  const shouldQueryArticles =
+    personaSlug === "fintech" && systemPrompt === undefined;
   const searchTerms = message.split(/\s+/).filter(w => w.length > 3).slice(0, 3);
   let relatedArticles: any[] = [];
-  if (searchTerms.length > 0) {
+  if (shouldQueryArticles && searchTerms.length > 0) {
     try {
       const conditions = searchTerms.map(term =>
         or(
@@ -90,6 +129,7 @@ router.post("/chat", chatLimiter, async (req, res): Promise<void> => {
     intentResult.intent,
     articleContext,
     biasId || biasLabel ? { biasId, biasLabel } : undefined,
+    personaSlug || systemPrompt ? { personaSlug, systemPrompt } : undefined,
   );
 
   if (llmResponse) {

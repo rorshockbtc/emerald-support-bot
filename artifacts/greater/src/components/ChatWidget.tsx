@@ -889,6 +889,25 @@ export function ChatWidget({
           // on the cloud reply matches what the visitor was viewing.
           biasId: pipe.pipe ? pipe.activeBiasId : undefined,
           biasLabel: activeBiasOption?.label,
+          // Persona identity + the exact local system prompt. Without
+          // these, the cloud server falls back to its built-in
+          // Greater meta-bot prompt; with them, the cloud reply is
+          // grounded in the same persona contract the local model
+          // ran against. This is what stops the cloud from inventing
+          // unrelated product identities (the old hardcoded
+          // "Blockstream support" prompt was the canonical example).
+          personaSlug: personaSlug ?? undefined,
+          // Mirror the same precedence the local path uses (Pipe wins,
+          // then persona+audience-bias hint, then bare persona). Kept
+          // inline rather than threading through LLMProvider state so
+          // there is no drift window between local and cloud sends.
+          systemPrompt: pipe.pipe
+            ? pipe.effectivePromptHint
+            : pipe.effectivePromptHint && personaSystemPrompt
+              ? `${personaSystemPrompt}\n\n${pipe.effectivePromptHint}`
+              : pipe.effectivePromptHint
+                ? pipe.effectivePromptHint
+                : personaSystemPrompt ?? undefined,
         },
       });
 
