@@ -156,8 +156,80 @@ function Hero() {
           </a>
         </motion.div>
       </div>
+
+      {/*
+        Editorial file-stamp in the bottom-right of the hero box. The
+        kind of tiny mono mark you see in the corner of a magazine
+        layout. Real print designers use these to break the visual
+        symmetry of an otherwise rectangular column. Anti-AI cue: a
+        real person filed this on a real day.
+      */}
+      <div
+        aria-hidden="true"
+        className="hidden sm:flex absolute bottom-5 left-6 chb-filemark items-center gap-3 select-none"
+      >
+        <span>Filed 04 · 2026</span>
+        <span className="inline-block w-6 h-px bg-pink-500/60" />
+        <span>Greater v1 · CHB :-]</span>
+      </div>
     </section>
   );
+}
+
+/**
+ * Shared section-header treatment for the Home page. Replaces the
+ * old eyebrow-plus-bold-sans-h2 pattern with a numbered editorial
+ * sigil and a serif-accent headline. The motion is deliberately
+ * understated: a viewport-triggered fade-up on the whole header
+ * block, once. `prefers-reduced-motion` is respected via framer
+ * motion's built-in honoring + the global override in index.css.
+ */
+function SectionHeader({
+  sigil,
+  label,
+  children,
+  lede,
+  align = "left",
+  trailing,
+}: {
+  sigil: string;
+  label: string;
+  children: React.ReactNode;
+  lede?: React.ReactNode;
+  align?: "left" | "between";
+  trailing?: React.ReactNode;
+}) {
+  const headerBlock = (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.4 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-2xl"
+    >
+      <p className="chb-section-sigil mb-3" data-testid={`sigil-${sigil.toLowerCase().replace(/\W+/g, "-")}`}>
+        <span>{sigil}</span>
+        <span className="text-foreground/80">{label}</span>
+      </p>
+      <h2 className="chb-section-headline text-3xl sm:text-[2.4rem]">
+        {children}
+      </h2>
+      {lede && (
+        <p className="text-base text-muted-foreground mt-4 leading-relaxed">
+          {lede}
+        </p>
+      )}
+    </motion.div>
+  );
+  if (align === "between" && trailing) {
+    return (
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        {headerBlock}
+        {trailing}
+      </div>
+    );
+  }
+  return <div className="mb-10">{headerBlock}</div>;
 }
 
 function PrinciplesStrip() {
@@ -186,45 +258,61 @@ function PrinciplesStrip() {
   return (
     <section className="border-b border-border bg-secondary/40 relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="mb-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <p className="chb-mono-eyebrow text-muted-foreground mb-2">
-              How it works
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
-              FOSS shell, in-browser inference, hired-out customization.
-            </h2>
-          </div>
-
-          <aside
-            className="self-start lg:self-end max-w-xs text-[12px] leading-snug text-muted-foreground italic px-3 py-2 border-l-2 border-pink-500/60 bg-pink-500/5 rounded-r-md"
-            style={{ transform: "rotate(-0.6deg)" }}
-            data-testid="aside-margin-note"
-          >
-            <span className="chb-mono-label text-pink-500/80 not-italic mr-1">
-              note —
-            </span>
-            "Explicit bias" is not just a slogan; it's a refusal. The
-            general-purpose chatbots pretending to be neutral are doing
-            damage. Ours says where it stands.
-          </aside>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {items.map((it, i) => (
-            <div
-              key={it.title}
-              className="flex flex-col gap-2"
-              // Tiny, intentional asymmetry on the second card so the
-              // grid doesn't read as machine-perfect. WCAG: rotation
-              // is purely visual; no meaning is conveyed by it.
-              style={i === 1 ? { transform: "translateY(6px) rotate(-0.3deg)" } : undefined}
+        <SectionHeader
+          sigil="§ 01"
+          label="How it works"
+          align="between"
+          trailing={
+            <aside
+              className="self-start lg:self-end max-w-xs text-[12px] leading-snug text-muted-foreground italic px-3 py-2 border-l-2 border-pink-500/60 bg-pink-500/5 rounded-r-md"
+              style={{ transform: "rotate(-0.6deg)" }}
+              data-testid="aside-margin-note"
             >
-              <it.icon className="w-5 h-5" style={{ color: "#01a9f4" }} />
-              <h3 className="text-sm font-semibold">{it.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{it.body}</p>
-            </div>
-          ))}
-        </div>
+              <span className="chb-mono-label text-pink-500/80 not-italic mr-1">
+                note —
+              </span>
+              "Explicit bias" is not just a slogan; it's a refusal. The
+              general-purpose chatbots pretending to be neutral are doing
+              damage. Ours says where it stands.
+            </aside>
+          }
+        >
+          FOSS shell, in-browser inference,{" "}
+          <span className="chb-serif-accent">hired-out curation.</span>
+        </SectionHeader>
+        {/*
+          Bento-asymmetric strip: four cards with deliberate vertical
+          stagger, alternating surface treatments, and a hairline left-
+          border in CHB-pink on the odd cards. The shape was previously
+          a 4-up uniform grid which read as an AI template. Each card
+          now has its own subtle visual signature without sacrificing
+          scannability or grid alignment on smaller screens.
+        */}
+        <motion.div
+          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+        >
+          {items.map((it, i) => {
+            const stagger = ["lg:translate-y-0", "lg:translate-y-3", "lg:-translate-y-2", "lg:translate-y-1"][i] ?? "";
+            const surface = i % 2 === 0
+              ? "bg-card border-border"
+              : "bg-secondary/50 border-border/70";
+            return (
+              <div
+                key={it.title}
+                className={`flex flex-col gap-2 rounded-xl border ${surface} p-5 ${stagger} ${i === 1 ? "rotate-[-0.3deg]" : ""}`}
+                style={{ borderLeft: i % 2 === 0 ? "2px solid #FE299E" : undefined }}
+              >
+                <it.icon className="w-5 h-5" style={{ color: "#01a9f4" }} />
+                <h3 className="text-sm font-semibold">{it.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{it.body}</p>
+              </div>
+            );
+          })}
+        </motion.div>
 
         <div className="mt-10 flex flex-wrap gap-3 text-sm">
           <Link
@@ -299,18 +387,19 @@ function Walkthrough() {
       data-testid="section-walkthrough"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="mb-10 max-w-2xl">
-          <p className="chb-mono-eyebrow text-muted-foreground mb-2">
-            A 30-second tour
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-            Three things to do before you decide whether this is real.
-          </h2>
-          <p className="text-base text-muted-foreground mt-3">
-            The shortest path from "another AI demo" to "okay, this is
-            architecturally different."
-          </p>
-        </div>
+        <SectionHeader
+          sigil="§ 02"
+          label="A 30-second tour"
+          lede={
+            <>
+              The shortest path from "another AI demo" to "okay, this is
+              architecturally different."
+            </>
+          }
+        >
+          Three things to do before you decide{" "}
+          <span className="chb-serif-accent">whether this is real.</span>
+        </SectionHeader>
         <ol className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {steps.map((s, i) => (
             <li
@@ -415,19 +504,20 @@ function FeatureHighlights() {
       data-testid="section-feature-highlights"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="mb-10 max-w-2xl">
-          <p className="chb-mono-eyebrow text-muted-foreground mb-2">
-            Four commitments
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-            Where Greater is architecturally different from a vendor chatbot.
-          </h2>
-          <p className="text-base text-muted-foreground mt-3">
-            Each of these has a dedicated page with the
-            engineering-grade detail. The summaries below are the
-            one-line version.
-          </p>
-        </div>
+        <SectionHeader
+          sigil="§ 03"
+          label="Four commitments"
+          lede={
+            <>
+              Each of these has a dedicated page with the engineering-grade
+              detail. The summaries below are the one-line version.
+            </>
+          }
+        >
+          Where Greater is{" "}
+          <span className="chb-serif-accent">architecturally different</span>{" "}
+          from a vendor chatbot.
+        </SectionHeader>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {features.map((f) => (
             <article
@@ -509,22 +599,24 @@ function CXCostSection() {
       data-testid="section-cx-cost"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="mb-10 max-w-2xl">
-          <p className="chb-mono-eyebrow text-muted-foreground mb-2">
-            More than a chatbot
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-            The vendor stack charges you a seat tax, an AI tax, and a
-            per-resolution tax. Greater charges you{" "}
-            <span className="text-pink-500">none of that</span>.
-          </h2>
-          <p className="text-base text-muted-foreground mt-3">
-            Modern helpdesks have moved to outcome-based billing — you
-            pay every time the AI does its job, and sometimes even when it doesn't (SalesForce). That bill scales with
-            your success. Greater runs on the visitor's device, so
-            the marginal cost of a resolution is zero.
-          </p>
-        </div>
+        <SectionHeader
+          sigil="§ 04"
+          label="More than a chatbot"
+          lede={
+            <>
+              Modern helpdesks have moved to outcome-based billing — you
+              pay every time the AI does its job, and sometimes even when
+              it doesn't (SalesForce). That bill scales with your success.
+              Greater runs on the visitor's device, so the marginal cost
+              of a resolution is zero.
+            </>
+          }
+        >
+          The vendor stack charges you a seat tax, an AI tax, and a{" "}
+          <span className="chb-serif-accent">per-resolution tax.</span>{" "}
+          Greater charges you{" "}
+          <span className="text-pink-500">none of that</span>.
+        </SectionHeader>
 
         <div
           className="rounded-xl border border-border bg-card overflow-hidden mb-10"
@@ -634,21 +726,28 @@ function PersonasGrid() {
     <section id="personas" className="py-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-12">
-          <p className="chb-mono-eyebrow text-muted-foreground mb-3">
-            Six industries / six bots
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight max-w-3xl">
-            One launch bot, five real-but-light demos.
-          </h2>
-          <p className="text-base text-muted-foreground mt-3 max-w-2xl">
-            FinTech is the launch demo &mdash; a more fully curated multi-thousand-snippet
-            corpus, a Q&amp;A bank, and three bias variants you can toggle
-            mid-conversation. The other five are the same architecture
-            running on a small seed corpus: real persona, real prompts,
-            real refusal behaviour. Each card links to the case study
-            for the substantive narrative; the demo button opens the
-            bot itself. If you have a complex product ecosystem, you can maintain a core knowledge base for all products and then customize bot instances for each product.
-          </p>
+          <SectionHeader
+            sigil="§ 05"
+            label="Six industries / six bots"
+            lede={
+              <>
+                FinTech is the launch demo — a more fully curated
+                multi-thousand-snippet corpus, a Q&amp;A bank, and three
+                bias variants you can toggle mid-conversation. The other
+                five are the same architecture running on a small seed
+                corpus: real persona, real prompts, real refusal
+                behaviour. Each card links to the case study for the
+                substantive narrative; the demo button opens the bot
+                itself. If you have a complex product ecosystem, you can
+                maintain a core knowledge base for all products and then
+                customize bot instances for each product.
+              </>
+            }
+          >
+            One launch bot,{" "}
+            <span className="chb-serif-accent">five real-but-light</span>{" "}
+            demos.
+          </SectionHeader>
         </div>
 
         {fintech && (

@@ -336,6 +336,73 @@
 }
 
 /**
+ * Editorial section sigil — small mono cap-and-numeral with a 24px
+ * pink hairline rule beside it. Replaces the all-caps mono eyebrow
+ * on marketing-page section headers so each section reads like a
+ * numbered chapter in a print magazine instead of a CMS template.
+ * Pair with a serif H2 (`chb-section-headline`) for the full effect.
+ */
+.chb-section-sigil {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.chb-section-sigil::before {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  background: #FE299E;
+  flex-shrink: 0;
+}
+
+/**
+ * Serif section headline — Fraunces with optical sizing turned on,
+ * mid-weight, slightly tighter tracking than the Inter default.
+ * Specifically tuned for H2-scale (28-36px) marketing copy where
+ * the goal is "editorial," not "shouty hero." Use sparingly; the
+ * point is contrast against the surrounding sans body text.
+ */
+.chb-section-headline {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.12;
+  font-feature-settings: "ss01", "ss02";
+}
+
+/**
+ * Inline serif italic accent — for one-or-two-word callouts inside
+ * an otherwise sans headline. The mixed-typeface trick is the cheap
+ * way to get an Atlantic-style headline rhythm without committing
+ * the whole site to a serif-first design.
+ */
+.chb-serif-accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+}
+
+/**
+ * Build / file stamp — the tiny mono mark you see in the corner of
+ * a magazine layout, repurposed here as an anti-AI cue: a real
+ * person actually filed this on a real date.
+ */
+.chb-filemark {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+
+/**
  * `prose-styles` — light typographic defaults for the Compliance and
  * case-study bodies. Intentionally minimal; we don't load `@tailwind/
  * typography` for one page.
