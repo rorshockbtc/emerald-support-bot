@@ -171,6 +171,21 @@ export interface NavigateOptions {
     messages: ChatTurn[],
     maxNewTokens?: number,
   ) => Promise<string>;
+  /**
+   * Number of clarify-result turns the visitor has already received
+   * in a row. Used to escalate the clarify copy: 0 = first ask, 1 =
+   * second ask (gentler "still not landing — try…"), 2+ = surface a
+   * "want a human?" pointer instead of dumping the same menu again.
+   * Optional; defaults to 0 (first-clarify copy).
+   */
+  consecutiveClarifies?: number;
+  /**
+   * True when the model's still loading. Surfaces a one-line note
+   * above the verbatim brief so the visitor knows why the answer
+   * reads canned rather than tailored — and that the next turn will
+   * be polished once warmup completes.
+   */
+  modelWarmingUp?: boolean;
   onTelemetry?: (tag: string, text: string) => void;
   /** Cap on hops; deep trees may need higher. Default 4. */
   maxDepth?: number;
@@ -313,13 +328,71 @@ function sourceToChunk(
 }
 
 /**
- * Render the leaf as a verbatim answer (no model). The brief is
- * authored with `[N]` markers in place; we just append a compact
- * "Sources" list so the citation chips have something to scroll to
- * even when the trace panel is closed.
+ * Render the leaf as a verbatim answer (no model).
+ *
+ * Two improvements over the bare `leaf.brief.trim()` we used to ship:
+ *
+ *   1. **Question-relevant excerpting.** When the brief is multi-
+ *      paragraph (the convention is 3), we score each paragraph's
+ *      term-overlap with the user's question and lead with the best
+ *      one, then append the others if they meaningfully add. This is
+ *      the difference between "what's a UTXO?" landing on the mempool
+ *      brief and getting back a wall of text about block templates,
+ *      vs. getting the one paragraph that actually defines UTXO.
+ *
+ *   2. **Honest warmup framing.** When the local model is still
+ *      downloading, prepend a one-line italic note so the visitor
+ *      knows why the answer reads canned and that the next turn will
+ *      be tailored. The shit-test session showed visitors react to
+ *      the wall-of-text as "useless / canned" — the framing converts
+ *      the same content into "ok, they're warming up, I'll wait."
  */
-function renderVerbatim(leaf: CatalogLeaf): string {
-  return leaf.brief.trim();
+function renderVerbatim(
+  leaf: CatalogLeaf,
+  userQuery?: string,
+  modelWarmingUp?: boolean,
+): string {
+  const brief = leaf.brief.trim();
+  const paragraphs = brief.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+
+  // Two-paragraph briefs and shorter: don't bother re-ordering, the
+  // visitor's getting the whole thing anyway.
+  let body: string;
+  if (!userQuery || paragraphs.length < 3) {
+    body = brief;
+  } else {
+    const qTerms = new Set(tokenize(userQuery));
+    if (qTerms.size === 0) {
+      body = brief;
+    } else {
+      const scored = paragraphs.map((p, idx) => {
+        const pTerms = tokenize(p);
+        let score = 0;
+        for (const t of pTerms) if (qTerms.has(t)) score += 1;
+        // Tiny penalty for paragraphs that come later — when scores
+        // tie, preserve authored order so the brief still reads.
+        return { p, idx, score: score - idx * 0.001 };
+      });
+      const best = scored.reduce((a, b) => (b.score > a.score ? b : a));
+      // Lead with the best paragraph; append the others in original
+      // order so the visitor still gets the full brief but the lead
+      // actually addresses what they asked.
+      const lead = best.p;
+      const rest = paragraphs.filter((_, i) => i !== best.idx);
+      body = best.score > 0
+        ? [lead, ...rest].join("\n\n")
+        : brief;
+    }
+  }
+
+  if (modelWarmingUp) {
+    return [
+      `*My local AI model is still loading — answering from the closest curated note. Ask again in a moment for a tailored answer.*`,
+      "",
+      body,
+    ].join("\n");
+  }
+  return body;
 }
 
 /**
@@ -369,16 +442,61 @@ async function polishWithModel(
 
 /**
  * Render a clarification result. Picks the top-3 ranked edges (or
- * fewer if the level has fewer) and frames them as "did you mean…?"
+ * fewer if the level has fewer) and frames them as "did you mean…?".
+ *
+ * Three variations on the framing, picked from cheap signals:
+ *
+ *   1. **Off-topic** (top score is 0). The visitor asked something
+ *      that didn't lexically touch any branch — Assange, "what is
+ *      orange?", capital-of-Assyria. Don't pretend it's a "between
+ *      these branches" question; say plainly that it's outside the
+ *      bot's scope and offer the menu as "what I do cover".
+ *   2. **Ambiguous** (top score > 0 but tied / below floor). The
+ *      visitor asked a real bitcoin question that genuinely could go
+ *      multiple ways. Standard "which angle?" framing.
+ *   3. **Repeat clarify** (consecutiveClarifies > 0). The visitor
+ *      already saw a clarify menu; don't dump the same wall a second
+ *      time. Acknowledge we're not connecting and offer a human
+ *      handoff alongside the menu.
+ *
+ * The `clarifyOptions` array is always populated so the chat widget
+ * can render the menu the same way regardless of framing.
  */
 function renderClarify(
   query: string,
   ranked: RankedEdge[],
   parentSummary: string,
+  isAtRoot: boolean,
+  consecutiveClarifies: number = 0,
 ): NavigationResult {
   const top = ranked.slice(0, Math.min(3, ranked.length));
+  const isOffTopic = isAtRoot && (top[0]?.score ?? 0) === 0;
+  // Topical anchor at root already starts with the pack name (e.g.
+  // "Bitcoin — the monetary thesis…"), so drop the leading word
+  // for the in-prose mention to avoid "I cover bitcoin — bitcoin".
+  // Below-root, parentSummary is the branch summary which reads
+  // cleanly as-is.
+  const inProseScope = isAtRoot
+    ? parentSummary.replace(/^Bitcoin\s*[—-]\s*/i, "").replace(/\.$/, "").toLowerCase()
+    : parentSummary.toLowerCase().replace(/\.$/, "");
+
+  let intro: string;
+  if (consecutiveClarifies >= 2) {
+    intro = isOffTopic
+      ? `That's the third question I haven't been able to place. I'm narrowly scoped to bitcoin — if what you actually want is a person, the contact form on this page reaches a human directly. Otherwise, here are the angles I do cover:`
+      : `Still not landing the question — that's on me. If you'd rather hand off to a human, the contact form on this page works. Otherwise, try one of these directly:`;
+  } else if (consecutiveClarifies === 1) {
+    intro = isOffTopic
+      ? `That one's also outside what I cover. I'm scoped to ${inProseScope} — try one of these instead, or rephrase what you're after:`
+      : `Still ambiguous on my end — try picking one of these explicitly, or rephrase:`;
+  } else if (isOffTopic) {
+    intro = `That's outside what I cover. I'm scoped to ${inProseScope} — here's what I can talk about:`;
+  } else {
+    intro = `I cover ${inProseScope} a few different ways. Which of these is closer to what you're asking?`;
+  }
+
   const lines = [
-    `I cover ${parentSummary.toLowerCase().replace(/\.$/, "")} a few different ways. Which of these is closer to what you're asking?`,
+    intro,
     "",
     ...top.map((r, i) => `${i + 1}. **${r.edge.label}** — ${r.edge.summary}`),
   ];
@@ -386,7 +504,7 @@ function renderClarify(
     kind: "clarify",
     text: lines.join("\n"),
     chunks: [],
-    reasoning: `Catalog clarify: query "${query}" did not pick a confident edge (top scores ${top.map((r) => r.score.toFixed(2)).join(", ")}).`,
+    reasoning: `Catalog clarify (${isOffTopic ? "off-topic" : "ambiguous"}, repeat=${consecutiveClarifies}): query "${query}" did not pick a confident edge (top scores ${top.map((r) => r.score.toFixed(2)).join(", ")}).`,
     hops: [],
     clarifyOptions: top.map((r) => ({
       id: r.edge.id,
@@ -464,10 +582,16 @@ export async function navigateCatalog(
   tel("[Catalog]", `Loading root index for pack "${packSlug}"…`);
   const root = (await opts.loader("index.json")) as CatalogRoot;
   let edges = root.edges;
-  let parentSummary = `${root.title} — ${root.topicalAnchor}`;
+  // Use the root's topicalAnchor directly. It already includes the
+  // pack name as the leading clause (e.g. "Bitcoin — the monetary
+  // thesis…"), so prefixing with `${root.title} — ` produced the
+  // visible "I cover bitcoin — bitcoin — …" duplication that
+  // visitors flagged in the live shit-test.
+  let parentSummary = root.topicalAnchor ?? root.title;
   let parentPath = ""; // Path prefix for resolving child loaders ("austrian-monetary/").
   let parentNodeId = ROOT_NODE_ID;
   const hops: NavigationHop[] = [];
+  const consecutiveClarifies = opts.consecutiveClarifies ?? 0;
 
   for (let depth = 0; depth < maxDepth; depth++) {
     const ranked = rankEdges(query, edges);
@@ -495,14 +619,14 @@ export async function navigateCatalog(
     // Floor check: if the top score is too low, ask the visitor.
     if (!top || top.score < FLOOR_SCORE) {
       tel("[Catalog]", `Floor miss at depth ${depth}: top score ${top?.score.toFixed(2) ?? "n/a"} < ${FLOOR_SCORE}`);
-      return renderClarify(query, ranked, parentSummary);
+      return renderClarify(query, ranked, parentSummary, depth === 0, consecutiveClarifies);
     }
     // Tie check: only at the root level (a clarify deeper down is
     // generally annoying — once the visitor is inside Austrian
     // monetary, picking between sub-leaves is a job for the bot).
     if (depth === 0 && second && top.score < TIE_RATIO * second.score) {
       tel("[Catalog]", `Tie at root: top=${top.score.toFixed(2)} second=${second.score.toFixed(2)} ratio<${TIE_RATIO}`);
-      return renderClarify(query, ranked, parentSummary);
+      return renderClarify(query, ranked, parentSummary, true, consecutiveClarifies);
     }
 
     hops.push({
@@ -531,12 +655,15 @@ export async function navigateCatalog(
         } catch (err) {
           // Polish failure must never break the answer — fall back to
           // verbatim so the visitor still gets the curated content.
+          // Pass the user query so the smart-excerpt re-ordering picks
+          // a relevant lead paragraph; modelWarmingUp stays false here
+          // because the model IS ready, the polish call just failed.
           tel("[Catalog]", `Polish failed (${(err as Error).message}); falling back to verbatim`);
-          text = renderVerbatim(leaf);
+          text = renderVerbatim(leaf, query, false);
         }
       } else {
         tel("[Catalog]", "Model not ready — returning leaf brief verbatim");
-        text = renderVerbatim(leaf);
+        text = renderVerbatim(leaf, query, opts.modelWarmingUp ?? true);
       }
       return {
         kind: "answer",

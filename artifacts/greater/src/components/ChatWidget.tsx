@@ -309,6 +309,18 @@ export function ChatWidget({
   // off so a long session doesn't permanently bias the ranker.
   const recentCatalogLeafIdsRef = useRef<string[]>([]);
   /**
+   * How many clarify-result turns the navigator has shipped in a row.
+   * Used to escalate the clarify copy: 0 = first ask, 1 = gentler
+   * "still ambiguous" follow-up, 2+ = surface a contact-form pointer
+   * alongside the menu so the visitor isn't stuck in a clarify loop.
+   * Reset to 0 every time we ship a non-clarify answer so a deep
+   * session that occasionally clarifies doesn't permanently land in
+   * the escalated copy. The navigator's reasoning sentinel
+   * (`Catalog clarify…`) is the source of truth for "this turn was a
+   * clarify".
+   */
+  const consecutiveClarifiesRef = useRef<number>(0);
+  /**
    * Stable id of the seeded welcome message. The widget always
    * injects a welcome turn (with or without the `welcomeMessage`
    * prop), and we need to be able to exclude it from "real turn"
@@ -601,6 +613,53 @@ export function ChatWidget({
   const runLocal = async (userText: string, localOnlyDueToCap = false) => {
     setIsLocalGenerating(true);
     try {
+      // Pre-walk human-escalation intent. The catalog ranker can't
+      // resolve "how do I contact a human" to any branch — every
+      // bitcoin branch out-scores it, so it lands on a random leaf
+      // and the visitor gets a wall of text about UTXOs when what
+      // they wanted was a pointer to a contact form. Detect a few
+      // high-signal phrases and short-circuit to a synthetic message
+      // that surfaces the in-bubble action row (Browse / Email a
+      // human / Rephrase) — same affordance hard refusals get,
+      // because the visitor's intent is the same: "get me out of the
+      // bot." Pattern is conservative on purpose: the bot can still
+      // answer "is satoshi human?" or "Hal Finney as a person" since
+      // those don't match the contact-intent shape.
+      const escalationIntent = /\b(?:contact|reach|talk to|speak to|email|message)\s+(?:a\s+)?(?:human|person|someone|you|support|team)\b|\b(?:human|live|real)\s+(?:agent|person|support|help)\b|\bget\s+me\s+(?:a|to a)\s+(?:human|person)\b|\bthis\s+(?:bot\s+)?is\s+(?:useless|broken)\b/i;
+      if (escalationIntent.test(userText)) {
+        // The user turn is already in `messages` — handleSend pushed
+        // it before calling runLocal. Don't re-append it here or the
+        // transcript shows two identical user bubbles back-to-back
+        // (and the feedback row would pair off the wrong turn).
+        const botMsg: MessageProps = {
+          id: uuidv4(),
+          role: 'bot',
+          content: [
+            "Sounds like you want a person, not a bot — fair.",
+            "",
+            "The contact form on this page goes straight to a human inbox. Use the **Email a human** button below, or browse what I do cover if you'd rather try one more question first.",
+          ].join("\n"),
+          timestamp: new Date(),
+          trustScore: 0.99,
+          ciBreakdown: 'Escalation intent detected — surfacing contact form rather than searching the catalog.',
+          responseSource: 'local',
+          isHardRefusal: true,
+          latencyMs: 0,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+        debugLog({
+          kind: 'bot-message-local',
+          source: 'local',
+          latencyMs: 0,
+          reasoning: 'Escalation pre-walk: contact/human intent matched',
+          isHardRefusal: true,
+          isWeakContextReply: false,
+          replyPreview: botMsg.content.slice(0, 600),
+        });
+        consecutiveClarifiesRef.current = 0;
+        setIsLocalGenerating(false);
+        return;
+      }
       const history: ChatTurn[] = messages
         .filter((m) => (m.role === 'user' || m.role === 'bot') && !m.isModeNote)
         .map((m) => ({
@@ -673,6 +732,7 @@ export function ChatWidget({
             packSlug: 'bitcoin',
             catalogBaseUrl: `${import.meta.env.BASE_URL}catalog/bitcoin/`,
             recentLeafIds: recentCatalogLeafIdsRef.current.slice(),
+            consecutiveClarifies: consecutiveClarifiesRef.current,
             // JIT-fetch up to 3 per-doc local copies per turn so the
             // trace panel shows substantive source-derived bodies
             // (excerpt + every citing leaf's brief), not just the
@@ -793,6 +853,18 @@ export function ChatWidget({
         })),
         replyPreview: answer.text.slice(0, 600),
       });
+      // Track consecutive clarify turns so the navigator can escalate
+      // its copy on the next turn (gentler 2nd ask, contact-form
+      // pointer on the 3rd). The reasoning sentinel "Catalog clarify"
+      // is set by navigator.renderClarify; any other reasoning means
+      // we shipped real content (answer or refusal) and the counter
+      // resets so a deep session that occasionally clarifies doesn't
+      // permanently land in the escalated copy.
+      if (reasoning.startsWith('Catalog clarify')) {
+        consecutiveClarifiesRef.current += 1;
+      } else {
+        consecutiveClarifiesRef.current = 0;
+      }
       // Push the catalog leaf id (when present) into the sticky-context
       // ring buffer so the next turn's navigator can prefer the same
       // branch on near-tie scores. De-duped so revisiting a leaf

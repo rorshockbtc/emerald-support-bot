@@ -420,5 +420,13 @@ export interface AskOptions {
     jitLoadBodies?: boolean;
     corpusBaseUrl?: string;
     jitMaxDocs?: number;
+    /**
+     * Number of clarify-result turns the visitor has already received
+     * in a row before this turn. The navigator uses this to escalate
+     * its clarify copy (gentler second ask, contact-form pointer on
+     * the third). Caller is responsible for resetting the counter
+     * once a non-clarify answer ships. Optional; treated as 0.
+     */
+    consecutiveClarifies?: number;
   };
 }

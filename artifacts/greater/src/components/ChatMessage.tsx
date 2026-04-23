@@ -243,10 +243,10 @@ export function ChatMessage({
               : "bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] border-r-2 border-r-foreground/30 rounded-md"
           )}
         >
-          <div className="whitespace-pre-wrap leading-relaxed">
-            {isBot && thoughtTrace && thoughtTrace.chunks.length > 0
-              ? renderWithCitations(content, thoughtTrace.chunks, handleCitationClick)
-              : content}
+          <div className="leading-relaxed chb-rich-content">
+            {isBot
+              ? renderRichContent(content, thoughtTrace?.chunks ?? [], handleCitationClick)
+              : <div className="whitespace-pre-wrap">{content}</div>}
           </div>
 
           {/* Hard-refusal action affordance. Three plain, scoped
@@ -551,6 +551,144 @@ function renderWithCitations(
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts;
+}
+
+/**
+ * Inline-markdown renderer that composes with citation markers.
+ *
+ * The shit-test session surfaced literal `**bold**` characters and
+ * raw `1.` line markers in the chat bubbles — the bot was authoring
+ * markdown but the bubble was rendering plain text. This is the
+ * smallest possible fix that keeps the dependency graph clean (no
+ * markdown-it / remark / react-markdown) while covering the
+ * formatting the catalog briefs and clarify menus actually use:
+ *
+ *   - **bold**, *italic*, `inline code`
+ *   - [link text](url)
+ *   - paragraph blocks separated by blank lines
+ *   - ordered lists (lines starting with `N.` ) and unordered lists
+ *     (lines starting with `-` or `*`)
+ *
+ * Citation markers (`[1]`, `[1,2]`) are processed inside each text
+ * segment via the existing renderWithCitations function — order
+ * matters: markdown tokenization runs first so `**[1]**` works (the
+ * bold pair is consumed and the inner segment is then citation-
+ * processed). Anything we don't recognise renders verbatim, so the
+ * worst-case failure mode is "looks like the old plain-text bubble"
+ * — never a crash, never invented formatting.
+ *
+ * Deliberately not supported: headings (the bot shouldn't be using
+ * them in chat), block code (briefs don't author it), tables (same),
+ * images (same). If we ever need them, this is the place to add
+ * them; for now keeping the surface area honest about what's used.
+ */
+type InlineRenderCtx = {
+  chunks: RetrievedChunk[];
+  onCitationClick?: (n: number) => void;
+};
+
+function renderInline(text: string, ctx: InlineRenderCtx, keyBase: string): React.ReactNode[] {
+  // Tokenize inline markdown in a single pass. Order: links first
+  // (they consume their own brackets so `[text](url)` doesn't get
+  // mistaken for a citation marker), then bold, then italic, then
+  // inline code. Whatever's left is the literal-text "tail" that
+  // gets handed to renderWithCitations for `[N]` processing.
+  type Token = { kind: "text" | "bold" | "italic" | "code" | "link"; text: string; href?: string };
+  const tokens: Token[] = [];
+  // Combined regex; first matching alternative wins per scan position.
+  // Note: `\*\*` must be tried before `\*` so a single asterisk
+  // doesn't eat half of a bold pair.
+  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|(?<![*\w])\*([^*]+)\*(?![*\w])/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) tokens.push({ kind: "text", text: text.slice(last, m.index) });
+    if (m[1] !== undefined) tokens.push({ kind: "link", text: m[1], href: m[2] });
+    else if (m[3] !== undefined) tokens.push({ kind: "bold", text: m[3] });
+    else if (m[4] !== undefined) tokens.push({ kind: "code", text: m[4] });
+    else if (m[5] !== undefined) tokens.push({ kind: "italic", text: m[5] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) tokens.push({ kind: "text", text: text.slice(last) });
+
+  return tokens.map((t, i) => {
+    const k = `${keyBase}-${i}`;
+    if (t.kind === "text") {
+      return (
+        <React.Fragment key={k}>
+          {renderWithCitations(t.text, ctx.chunks, ctx.onCitationClick)}
+        </React.Fragment>
+      );
+    }
+    if (t.kind === "bold") return <strong key={k} className="font-semibold">{renderWithCitations(t.text, ctx.chunks, ctx.onCitationClick)}</strong>;
+    if (t.kind === "italic") return <em key={k} className="italic">{renderWithCitations(t.text, ctx.chunks, ctx.onCitationClick)}</em>;
+    if (t.kind === "code") return <code key={k} className="px-1 py-0.5 rounded bg-[hsl(var(--muted))]/60 text-[0.92em] font-mono">{t.text}</code>;
+    if (t.kind === "link") return (
+      <a
+        key={k}
+        href={t.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-pink-300 hover:text-pink-200 underline underline-offset-2 decoration-pink-400/50"
+      >
+        {t.text}
+      </a>
+    );
+    return null;
+  });
+}
+
+function renderRichContent(
+  content: string,
+  chunks: RetrievedChunk[],
+  onCitationClick?: (n: number) => void,
+): React.ReactNode {
+  const ctx: InlineRenderCtx = { chunks, onCitationClick };
+  // Split into blocks on blank lines; each block becomes a paragraph,
+  // an ordered list, or an unordered list. Single newlines inside a
+  // paragraph are preserved as <br /> so authored hard-wraps still
+  // read (the briefs occasionally use them for emphasis breaks).
+  const blocks = content.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  return blocks.map((block, bi) => {
+    const lines = block.split("\n");
+    const isOrdered = lines.every((l) => /^\d+\.\s+/.test(l));
+    const isUnordered = !isOrdered && lines.every((l) => /^[-*]\s+/.test(l));
+    if (isOrdered) {
+      return (
+        <ol key={`b-${bi}`} className="list-decimal pl-5 my-1.5 space-y-1">
+          {lines.map((l, li) => {
+            const item = l.replace(/^\d+\.\s+/, "");
+            return <li key={li}>{renderInline(item, ctx, `b-${bi}-${li}`)}</li>;
+          })}
+        </ol>
+      );
+    }
+    if (isUnordered) {
+      return (
+        <ul key={`b-${bi}`} className="list-disc pl-5 my-1.5 space-y-1">
+          {lines.map((l, li) => {
+            const item = l.replace(/^[-*]\s+/, "");
+            return <li key={li}>{renderInline(item, ctx, `b-${bi}-${li}`)}</li>;
+          })}
+        </ul>
+      );
+    }
+    // Plain paragraph. Preserve interior line breaks.
+    const segs: React.ReactNode[] = [];
+    lines.forEach((l, li) => {
+      if (li > 0) segs.push(<br key={`br-${bi}-${li}`} />);
+      segs.push(
+        <React.Fragment key={`s-${bi}-${li}`}>
+          {renderInline(l, ctx, `b-${bi}-${li}`)}
+        </React.Fragment>,
+      );
+    });
+    return (
+      <p key={`b-${bi}`} className={bi === 0 ? "" : "mt-2"}>
+        {segs}
+      </p>
+    );
+  });
 }
 
 /**

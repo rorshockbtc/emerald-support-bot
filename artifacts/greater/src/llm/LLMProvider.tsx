@@ -1527,10 +1527,12 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
           jitLoadBodies,
           corpusBaseUrl,
           jitMaxDocs,
+          consecutiveClarifies,
         } = options.useCatalog;
         options.onTelemetry?.("[Catalog]", `Walking catalog for pack "${packSlug}"…`);
         try {
           const loader = makeFetchLoader(catalogBaseUrl);
+          const modelReady = status === "ready";
           const result = await navigateCatalog(userMessage, packSlug, {
             loader,
             history,
@@ -1538,16 +1540,21 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
             jitLoadBodies,
             corpusBaseUrl,
             jitMaxDocs,
-            generate:
-              status === "ready"
-                ? async (msgs, maxNew) => {
-                    const text = await callWorker<string>("generate", {
-                      messages: msgs,
-                      maxNewTokens: maxNew ?? 320,
-                    });
-                    return typeof text === "string" ? text : String(text);
-                  }
-                : undefined,
+            consecutiveClarifies,
+            // The navigator's verbatim path uses this to prepend a
+            // one-line "model still loading" note so the visitor
+            // understands why the answer reads canned. Only true
+            // before the WebGPU model has finished its first stage.
+            modelWarmingUp: !modelReady,
+            generate: modelReady
+              ? async (msgs, maxNew) => {
+                  const text = await callWorker<string>("generate", {
+                    messages: msgs,
+                    maxNewTokens: maxNew ?? 320,
+                  });
+                  return typeof text === "string" ? text : String(text);
+                }
+              : undefined,
             onTelemetry: options.onTelemetry,
           });
           options.onTelemetry?.(
