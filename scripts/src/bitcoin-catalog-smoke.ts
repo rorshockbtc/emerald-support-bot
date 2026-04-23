@@ -22,14 +22,14 @@ import { fileURLToPath } from "node:url";
 import {
   navigateCatalog,
   type CatalogLoader,
-} from "../../artifacts/emerald/src/llm/catalog/navigator";
+} from "../../artifacts/greater/src/llm/catalog/navigator";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const CATALOG_DIR = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "catalog",
   "bitcoin",
@@ -152,7 +152,7 @@ async function main() {
       const localPath = path.join(
         REPO_ROOT,
         "artifacts",
-        "emerald",
+        "greater",
         "public",
         "corpus",
         "bitcoin",

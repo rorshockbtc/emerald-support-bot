@@ -2,7 +2,7 @@ kind = "web"
 previewPath = "/"
 title = "Greater"
 version = "1.0.0"
-id = "artifacts/emerald"
+id = "artifacts/greater"
 router = "path"
 
 [[integratedSkills]]
@@ -15,15 +15,15 @@ name = "web"
 paths = ["/"]
 
 [services.development]
-run = "pnpm --filter @workspace/emerald run dev"
+run = "pnpm --filter @workspace/greater run dev"
 
 [services.env]
 PORT = "25794"
 BASE_PATH = "/"
 
 [services.production]
-build = ["pnpm", "--filter", "@workspace/emerald", "run", "build"]
-publicDir = "artifacts/emerald/dist/public"
+build = ["pnpm", "--filter", "@workspace/greater", "run", "build"]
+publicDir = "artifacts/greater/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]

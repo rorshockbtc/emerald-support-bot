@@ -1490,7 +1490,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // model is ready — leaf briefs render verbatim with built-in
       // [N] markers; once the model is ready we polish the brief
       // into a conversational answer keyed to the user's question.
-      // See artifacts/emerald/src/llm/catalog/navigator.ts.
+      // See artifacts/greater/src/llm/catalog/navigator.ts.
       if (options?.useCatalog) {
         const {
           packSlug,
@@ -1585,7 +1585,7 @@ export function LLMProvider({ children }: { children: React.ReactNode }) {
       // language do I need?" or "is there a way to suggest things for
       // the knowledge base?" that score below the WEAK_CONTEXT gate
       // on semantic alone but match strong rare terms in the corpus.
-      // See artifacts/emerald/src/llm/lexicalIndex.ts for the BM25
+      // See artifacts/greater/src/llm/lexicalIndex.ts for the BM25
       // implementation, normalization curve, and fusion math.
       const retrievalOptions = {
         biasFilter: options?.biasFilter,

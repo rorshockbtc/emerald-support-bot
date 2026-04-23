@@ -12,7 +12,7 @@ function getClient(): Together | null {
   return client;
 }
 
-const SYSTEM_PROMPT = `You are Emerald, Blockstream's intelligent support assistant. You help users with Blockstream products including Green Wallet, Jade hardware wallet, Liquid Network, and Lightning Network.
+const SYSTEM_PROMPT = `You are Greater, Blockstream's intelligent support assistant. You help users with Blockstream products including Green Wallet, Jade hardware wallet, Liquid Network, and Lightning Network.
 
 Guidelines:
 - Be concise and helpful. Use short paragraphs and bullet points.

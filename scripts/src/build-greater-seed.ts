@@ -2,7 +2,7 @@
  * Build the Greater meta-bot knowledge seed bundle.
  *
  * The output bundle (`data/seeds/greater.json` and the mirror at
- * `artifacts/emerald/public/seeds/greater.json`) powers the meta-bot
+ * `artifacts/greater/public/seeds/greater.json`) powers the meta-bot
  * pinned to the marketing home page. The bundle is gitignored; this
  * builder script and its source list (below) are not.
  *
@@ -19,7 +19,7 @@
  * Private overlay
  *   For operator-only notes (pricing for hire engagements, internal
  *   roadmap, app data not yet on the public web), hand-author a sibling
- *   file at `artifacts/emerald/public/seeds/greater-private.json` with
+ *   file at `artifacts/greater/public/seeds/greater-private.json` with
  *   the same shape but `private: true` on each document. The runtime
  *   loader (LLMProvider.ensureSeedBundle) merges it on top, stamps the
  *   chunks with an `internal://` page_url, and the citation UI renders
@@ -67,7 +67,7 @@ const OUTPUT_PATH = path.join(REPO_ROOT, "data", "seeds", "greater.json");
 const PUBLIC_OUTPUT_PATH = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "seeds",
   "greater.json",

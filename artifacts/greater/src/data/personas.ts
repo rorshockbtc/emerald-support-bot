@@ -114,10 +114,10 @@ export type PersonaScenario = {
    * bot's identity completely (brand name, role, scope) WITHOUT relying
    * on any base prompt. The default base prompt in `LLMProvider` is the
    * Blockstream/Bitcoin one, which would otherwise leak through and the
-   * model would hallucinate "I'm Emerald, Blockstream's support
+   * model would hallucinate "I'm Greater, Blockstream's support
    * assistant" on every persona. Each persona owns its identity here.
    *
-   * Do not mention "Emerald", "Blockstream", "Greater" (the framework),
+   * Do not mention "Greater", "Blockstream", "Greater" (the framework),
    * or unrelated brands inside this string — the bot speaks AS the
    * persona's brand. The framework attribution lives only in the
    * "Powered by Greater" footer.

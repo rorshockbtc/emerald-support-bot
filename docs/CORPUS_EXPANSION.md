@@ -8,7 +8,7 @@
 
 The bot used to read like a careful technical reference: correct, but flat. Sophisticated visitors — especially Bitcoiners — read flatness as evasion and start probing for weaknesses.
 
-The harness charter (`artifacts/emerald/src/data/harness/bitcoinCharter.ts`) and all three bias-specific system prompts (`data/pipes/bitcoin-greater-v1.manifest.json`, `neutral`/`core`/`knots`) now share a consistent voice:
+The harness charter (`artifacts/greater/src/data/harness/bitcoinCharter.ts`) and all three bias-specific system prompts (`data/pipes/bitcoin-greater-v1.manifest.json`, `neutral`/`core`/`knots`) now share a consistent voice:
 
 - **Friendly, plain-spoken, visibly excited about the material.** "A smart friend at a coffee shop who has spent years in the space."
 - **"Did you know…" hook**, used sparingly (~1 in 5 messages, never every turn) when a retrieved snippet contains a genuinely surprising fact.
@@ -17,7 +17,7 @@ The harness charter (`artifacts/emerald/src/data/harness/bitcoinCharter.ts`) and
 
 ### 2. Universal "thinking floor" — 1.2 to 1.5 seconds
 
-The cloud fallback path used to return in 200–400ms, which made the bot feel like it didn't actually consider the question. The hard-refusal path already had a 600–900ms floor; the substantive-answer path now has a 1200–1500ms floor (`artifacts/emerald/src/components/ChatWidget.tsx`). Applied **after** the answer is in hand, so anything that already took longer than the floor is unaffected.
+The cloud fallback path used to return in 200–400ms, which made the bot feel like it didn't actually consider the question. The hard-refusal path already had a 600–900ms floor; the substantive-answer path now has a 1200–1500ms floor (`artifacts/greater/src/components/ChatWidget.tsx`). Applied **after** the answer is in hand, so anything that already took longer than the floor is unaffected.
 
 ### 3. Mises Institute corpus — sound money & Austrian foundations
 
@@ -123,9 +123,9 @@ Every source has its license, canonical URL, and attribution mechanism documente
 ## Files changed
 
 **Personality + thinking floor**
-- `artifacts/emerald/src/data/harness/bitcoinCharter.ts` — full rewrite of voice + rules
+- `artifacts/greater/src/data/harness/bitcoinCharter.ts` — full rewrite of voice + rules
 - `data/pipes/bitcoin-greater-v1.manifest.json` — all three bias system prompts updated
-- `artifacts/emerald/src/components/ChatWidget.tsx` — universal 1200-1500ms thinking floor
+- `artifacts/greater/src/components/ChatWidget.tsx` — universal 1200-1500ms thinking floor
 
 **Corpus infrastructure**
 - `scripts/src/build-bitcoin-seed.ts` — `BundleDoc` source_type union extended; `fetchLongFormWorks()` generic fetcher; in-process re-chunk pass; chunker bug fix; word-count reporting
@@ -151,7 +151,7 @@ Every source has its license, canonical URL, and attribution mechanism documente
 pnpm install
 GITHUB_TOKEN=<your-token> pnpm --filter @workspace/scripts run build-bitcoin-seed
 pnpm --filter @workspace/scripts run smoke-test
-pnpm --filter @workspace/emerald run dev
+pnpm --filter @workspace/greater run dev
 # Open the Bitcoin demo, ask: "What is sound money?" → should cite a mises.org link.
 # Ask: "Tell me about Bit Gold" → should cite nakamotoinstitute.org.
 # Ask anything substantive → response should pause at least ~1.2s before appearing.
@@ -163,13 +163,13 @@ The Bitcoin pack now ships a **catalog navigator** instead of the flat embedding
 
 **Why we changed it.** The flat-embed path required a 30-minute first-load (Xenova model download + index of ~9k chunks). For Bitcoiners — the audience that will judge this bot hardest — that's a non-starter. They open the page, get a spinner, close the tab. Catalog-first gets first paint under 2 seconds with no model download at retrieval time.
 
-**How it works.** Hand-curated tree at `artifacts/emerald/public/catalog/bitcoin/`:
+**How it works.** Hand-curated tree at `artifacts/greater/public/catalog/bitcoin/`:
 
 - **L1 root** with 8 branches (Austrian monetary thought, Bitcoin Core internals, Lightning, Privacy, Wallets/keys, Mining/PoW, Whitepaper/precursors, Operational how-to).
 - **L2 leaves** under each branch — fully authored for `austrian-monetary` and `core-internals` (6 leaves each); the other 6 branches ship as `stub` for graceful degradation.
-- A small **BM25-lite ranker** (`artifacts/emerald/src/llm/catalog/navigator.ts`) walks ROOT → BRANCH → LEAF, scoring edges by label + summary + an optional hidden `searchTerms[]` array.
-- A **deterministic anti-drift gate** (`artifacts/emerald/src/llm/catalog/antiDrift.ts`) refuses shitcoin/scam/financial-advice queries before the navigator ever descends. Regex, not LLM — no chance of accidental engagement.
-- **Per-doc JIT layer** at `artifacts/emerald/public/corpus/bitcoin/<slug>.json` (built by `build-bitcoin-seed`) lets leaves reference long-form documents without bundling the full 11 MB seed.
+- A small **BM25-lite ranker** (`artifacts/greater/src/llm/catalog/navigator.ts`) walks ROOT → BRANCH → LEAF, scoring edges by label + summary + an optional hidden `searchTerms[]` array.
+- A **deterministic anti-drift gate** (`artifacts/greater/src/llm/catalog/antiDrift.ts`) refuses shitcoin/scam/financial-advice queries before the navigator ever descends. Regex, not LLM — no chance of accidental engagement.
+- **Per-doc JIT layer** at `artifacts/greater/public/corpus/bitcoin/<slug>.json` (built by `build-bitcoin-seed`) lets leaves reference long-form documents without bundling the full 11 MB seed.
 
 **Per-pack flag.** `SeedBundleConfig.useCatalog: true` short-circuits the flat-embed install path. `AskOptions.useCatalog: { packSlug }` routes `ask()` through the navigator. The fintech persona in `ChatWidget` injects the option; other personas continue to use the flat pipeline.
 

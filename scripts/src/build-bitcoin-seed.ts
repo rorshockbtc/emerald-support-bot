@@ -42,7 +42,7 @@ import { randomBytes } from "node:crypto";
 
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
-import { slugForSource } from "../../artifacts/emerald/src/llm/catalog/slug";
+import { slugForSource } from "../../artifacts/greater/src/llm/catalog/slug";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,7 +56,7 @@ const OUTPUT_PATH = path.join(REPO_ROOT, "data", "seeds", "bitcoin.json");
 const PUBLIC_CORPUS_DIR = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "corpus",
   "bitcoin",
@@ -64,7 +64,7 @@ const PUBLIC_CORPUS_DIR = path.join(
 const PUBLIC_OUTPUT_PATH = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "seeds",
   "bitcoin.json",

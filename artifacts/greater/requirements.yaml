@@ -8,10 +8,10 @@ packages:
   "lucide-react": "For beautiful, consistent iconography across the app"
 
 images:
-  - path: "artifacts/emerald/public/images/grain.png"
+  - path: "artifacts/greater/public/images/grain.png"
     description: "A very subtle, dark, semi-transparent noise/grain texture used for premium dark mode backgrounds"
     aspect_ratio: "1:1"
-  - path: "artifacts/emerald/public/images/blockstream-bg.png"
+  - path: "artifacts/greater/public/images/blockstream-bg.png"
     description: "Abstract, very dark, deep space grey background with extremely subtle, faint glowing teal and cyan geometric line accents, professional fintech aesthetic"
     aspect_ratio: "16:9"
 

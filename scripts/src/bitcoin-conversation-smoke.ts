@@ -31,15 +31,15 @@ import { fileURLToPath } from "node:url";
 import {
   navigateCatalog,
   type CatalogLoader,
-} from "../../artifacts/emerald/src/llm/catalog/navigator";
-import type { ChatTurn } from "../../artifacts/emerald/src/llm/types";
+} from "../../artifacts/greater/src/llm/catalog/navigator";
+import type { ChatTurn } from "../../artifacts/greater/src/llm/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const CATALOG_DIR = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "catalog",
   "bitcoin",

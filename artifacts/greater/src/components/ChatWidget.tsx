@@ -127,7 +127,7 @@ export interface ChatWidgetProps {
    * curated Pipe is mounted, this overrides the LLMProvider's default
    * "You are Greater, support assistant for Blockstream..." prompt.
    * Without this, the model hallucinates a Blockstream/Bitcoin identity
-   * on non-FinTech personas (the "I'm Emerald, Blockstream's support
+   * on non-FinTech personas (the "I'm Greater, Blockstream's support
    * assistant" leak on MutualHealth, etc.).
    *
    * Sourced from `data/personas.ts` → `scenario.systemPrompt`. The
@@ -611,7 +611,7 @@ export function ChatWidget({
         // brand it speaks for), audience-hint AFTER (so tone shifts
         // for the active bias). Without the persona prefix the model
         // falls back to LLMProvider's Blockstream/Bitcoin default and
-        // hallucinates "I'm Emerald, Blockstream's support assistant"
+        // hallucinates "I'm Greater, Blockstream's support assistant"
         // on every persona.
         askOptions = {
           systemPrompt: personaSystemPrompt

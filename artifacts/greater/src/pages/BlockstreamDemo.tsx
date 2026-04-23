@@ -248,7 +248,7 @@ export default function Home() {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>Last updated: March 2026</span>
                     <div className="flex items-center gap-1 text-emerald-600">
-                      <span className="font-medium">Emerald Verified</span>
+                      <span className="font-medium">Greater Verified</span>
                       <CheckCircle2 className="w-4 h-4" />
                     </div>
                   </div>

@@ -91,7 +91,7 @@ doc:
 
 **FOSS, in this repo (MIT-licensed):**
 
-- The full Greater shell (`artifacts/emerald`).
+- The full Greater shell (`artifacts/greater`).
 - The chat widget, model loader, vector store, ingestion
   orchestrator, KnowledgePanel, BiasToggle.
 - Six persona scaffolds with case-study copy.
@@ -111,7 +111,7 @@ doc:
 - `data/seeds/bitcoin.json` — the output of the Bitcoin seed
   builder. Anyone can regenerate it from this repo (the script is
   open) but the cached artifact is not committed.
-- `artifacts/emerald/public/seeds/` — the public-static copy that
+- `artifacts/greater/public/seeds/` — the public-static copy that
   the LLMProvider fetches on first run for the FinTech demo.
 
 If you want to run the FinTech demo locally with the proprietary
@@ -127,7 +127,7 @@ to ingesting the Blockstream support corpus on first visit.
 
 ```bash
 pnpm install
-pnpm --filter @workspace/emerald run dev
+pnpm --filter @workspace/greater run dev
 # → http://localhost:5173
 ```
 
@@ -148,7 +148,7 @@ GITHUB_TOKEN=ghp_xxx pnpm exec tsx scripts/src/build-bitcoin-seed.ts
 ```
 
 The script writes `data/seeds/bitcoin.json` (gitignored). It also
-syncs a public-fetchable copy to `artifacts/emerald/public/seeds/`
+syncs a public-fetchable copy to `artifacts/greater/public/seeds/`
 so the LLMProvider can pull it on first run. Both directories are
 gitignored; the script is fully resumable and caches every fetched
 page to disk.
@@ -156,7 +156,7 @@ page to disk.
 ### Author a new persona Pipe
 
 Pipes live under `data/pipes/<slug>/manifest.json`. The Vite plugin
-in `artifacts/emerald/scripts/pipes-vite-plugin.ts` discovers them at
+in `artifacts/greater/scripts/pipes-vite-plugin.ts` discovers them at
 build time. See `data/pipes/bitcoin/` (in your local clone, post
 seed-build) for the reference structure.
 
@@ -204,7 +204,7 @@ For the long version with the actual flow diagram, see
 
 ```
 artifacts/
-  emerald/        # Greater marketing site + chat shell (the FOSS bit)
+  greater/        # Greater marketing site + chat shell (the FOSS bit)
   api-server/     # Express server for ingestion + escalation
   mockup-sandbox/ # Component-preview server for design iteration
 data/

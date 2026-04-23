@@ -30,7 +30,7 @@
     },
     {
       "q": "Can I run this on my own domain?",
-      "a": "Yes. The whole shell is MIT-licensed and lives at github.com/rorshockbtc/greater-than. Clone it, install dependencies with pnpm, replace the persona content under `artifacts/emerald/src/data/personas.ts` and the knowledge bundles under `artifacts/emerald/public/seeds/`, and deploy the static build to any host (Cloudflare Pages, Netlify, Vercel, your own NGINX). There is no proprietary backend you have to license to ship. The only optional server piece is the API server, which handles the human-escalation contact form and the admin feedback inbox; that's also in the repo. Forks get the FOSS shell plus the six persona scaffolds for free. What forks do NOT get is Pipes — the proprietary extension layer with curated, persona-tuned bundles and operator integrations. That's sold as a fractional engagement."
+      "a": "Yes. The whole shell is MIT-licensed and lives at github.com/rorshockbtc/greater-than. Clone it, install dependencies with pnpm, replace the persona content under `artifacts/greater/src/data/personas.ts` and the knowledge bundles under `artifacts/greater/public/seeds/`, and deploy the static build to any host (Cloudflare Pages, Netlify, Vercel, your own NGINX). There is no proprietary backend you have to license to ship. The only optional server piece is the API server, which handles the human-escalation contact form and the admin feedback inbox; that's also in the repo. Forks get the FOSS shell plus the six persona scaffolds for free. What forks do NOT get is Pipes — the proprietary extension layer with curated, persona-tuned bundles and operator integrations. That's sold as a fractional engagement."
     },
     {
       "q": "Is Greater open source?",

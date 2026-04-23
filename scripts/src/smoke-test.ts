@@ -1,7 +1,7 @@
 /**
  * Greater Bitcoin corpus — retrieval smoke test.
  *
- * Validates that the live corpus (artifacts/emerald/public/seeds/bitcoin.json)
+ * Validates that the live corpus (artifacts/greater/public/seeds/bitcoin.json)
  * still answers a curated set of test questions at the expected relevance
  * bands. Uses the SAME embedding model the browser uses (Xenova/bge-small-en-v1.5)
  * via @xenova/transformers, so the cosine scores produced here are directly
@@ -42,7 +42,7 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const CORPUS_PATH = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "seeds",
   "bitcoin.json",

@@ -70,7 +70,7 @@
       "chunks": [
         {
           "chunk_index": 0,
-          "text": "Yes, you can run Greater on your own domain. The whole shell is MIT-licensed and lives at github.com/rorshockbtc/greater-than. Clone it, install with pnpm, replace the persona content under `artifacts/emerald/src/data/personas.ts` and the knowledge bundles under `artifacts/emerald/public/seeds/`, and deploy the static build to any host (Cloudflare Pages, Netlify, Vercel, your own NGINX). There is no proprietary backend you have to license to ship. The only optional server piece is the API server, which handles the human-escalation contact form and the admin feedback inbox; that's also in the repo."
+          "text": "Yes, you can run Greater on your own domain. The whole shell is MIT-licensed and lives at github.com/rorshockbtc/greater-than. Clone it, install with pnpm, replace the persona content under `artifacts/greater/src/data/personas.ts` and the knowledge bundles under `artifacts/greater/public/seeds/`, and deploy the static build to any host (Cloudflare Pages, Netlify, Vercel, your own NGINX). There is no proprietary backend you have to license to ship. The only optional server piece is the API server, which handles the human-escalation contact form and the admin feedback inbox; that's also in the repo."
         },
         {
           "chunk_index": 1,
@@ -85,7 +85,7 @@
       "chunks": [
         {
           "chunk_index": 0,
-          "text": "The Greater source code lives at https://github.com/rorshockbtc/greater-than under the MIT license. The repository is a pnpm monorepo: `artifacts/emerald` is the marketing site + chat shell (React + Vite + TypeScript), `artifacts/api-server` is the optional Express server for contact-form escalation and the admin feedback inbox, `lib/pipes` is the manifest schema for the proprietary Pipes layer, and `scripts/` holds the seed-bundle build scripts. The README explains the FOSS-vs-proprietary split and how to bring up a local development environment."
+          "text": "The Greater source code lives at https://github.com/rorshockbtc/greater-than under the MIT license. The repository is a pnpm monorepo: `artifacts/greater` is the marketing site + chat shell (React + Vite + TypeScript), `artifacts/api-server` is the optional Express server for contact-form escalation and the admin feedback inbox, `lib/pipes` is the manifest schema for the proprietary Pipes layer, and `scripts/` holds the seed-bundle build scripts. The README explains the FOSS-vs-proprietary split and how to bring up a local development environment."
         }
       ]
     },

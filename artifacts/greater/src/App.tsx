@@ -38,7 +38,7 @@ function Router() {
       <Route path="/demo/:slug/ticket" component={TicketPreview} />
 
       {/* Live Blockstream (FinTech) demo — bespoke chrome preserved
-          as the original Emerald portfolio piece. Renders without the
+          as the original Greater portfolio piece. Renders without the
           Greater Layout chrome to keep the Blockstream-branded support
           page authentic. Other personas use the generic shell below. */}
       <Route path="/demo/blockstream" component={BlockstreamDemo} />

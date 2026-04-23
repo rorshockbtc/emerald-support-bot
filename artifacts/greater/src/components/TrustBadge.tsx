@@ -46,7 +46,7 @@ export function TrustBadge({ score, ciBreakdown, sourceUrl, lastUpdated }: Trust
   const handleImproveClick = () => {
     toast({
       title: "Feedback Recorded",
-      description: "Thank you for helping improve Emerald's model accuracy.",
+      description: "Thank you for helping improve Greater's model accuracy.",
     });
     setIsOpen(false);
   };

@@ -45,22 +45,22 @@ The bot serves at `localhost` on the workflow's assigned port (see preview pane)
 
 ### 5. Add your own Bitcoin material (optional)
 
-The Bitcoin catalog lives in `artifacts/emerald/public/catalog/bitcoin/`. To extend it:
+The Bitcoin catalog lives in `artifacts/greater/public/catalog/bitcoin/`. To extend it:
 
 1. Pick a branch (`austrian-monetary/`, `core-internals/`, `lightning/`, etc.)
 2. Add a leaf JSON file: `<branch>/<leaf-id>.json` with `id`, `label`, `brief` (the canned, citation-marked answer), and `sources[]` where each entry has `label`, `url`, `excerpt`, and optionally `internalSlug` (pointer to a per-doc copy under `public/corpus/bitcoin/<slug>.json` — when set, the chat trace renders a "local copy" badge so visitors can verify the citation against the static repo). Optional `relatedLeafIds: string[]` for suggested follow-ups.
 3. Register the leaf as an edge in `<branch>/index.json`.
-4. Bump the `version` field in `artifacts/emerald/public/catalog/bitcoin/index.json` (e.g. `"v1"` → `"v2"`). The browser caches the catalog by version; without a bump, returning visitors will keep the old tree.
+4. Bump the `version` field in `artifacts/greater/public/catalog/bitcoin/index.json` (e.g. `"v1"` → `"v2"`). The browser caches the catalog by version; without a bump, returning visitors will keep the old tree.
 5. Re-run the smoke harness: `pnpm --filter @workspace/scripts run bitcoin-catalog-smoke`.
 
-If you want to add raw long-form documents (not curated leaves), drop them under `scripts/src/bitcoin-seed/` and re-run `build-bitcoin-seed`. The per-doc JIT layer at `artifacts/emerald/public/corpus/bitcoin/` will pick them up; the leaves can reference them by slug.
+If you want to add raw long-form documents (not curated leaves), drop them under `scripts/src/bitcoin-seed/` and re-run `build-bitcoin-seed`. The per-doc JIT layer at `artifacts/greater/public/corpus/bitcoin/` will pick them up; the leaves can reference them by slug.
 
 ### 6. Re-brand
 
 - `project.md` (or your equivalent project-level README) — your project info and architecture notes
-- `artifacts/emerald/src/data/harness/bitcoinCharter.ts` — voice and persona
-- `artifacts/emerald/public/catalog/bitcoin/index.json` → `topicalAnchor` — what the bot says when it refuses off-topic
-- Logo, palette, fonts — `artifacts/emerald/src/styles/` and `src/components/`
+- `artifacts/greater/src/data/harness/bitcoinCharter.ts` — voice and persona
+- `artifacts/greater/public/catalog/bitcoin/index.json` → `topicalAnchor` — what the bot says when it refuses off-topic
+- Logo, palette, fonts — `artifacts/greater/src/styles/` and `src/components/`
 
 ---
 
@@ -85,10 +85,10 @@ Each edge has:
 
 ### 3. Author the catalog
 
-Mirror `artifacts/emerald/public/catalog/bitcoin/` for your pack:
+Mirror `artifacts/greater/public/catalog/bitcoin/` for your pack:
 
 ```
-artifacts/emerald/public/catalog/<your-pack>/
+artifacts/greater/public/catalog/<your-pack>/
 ├── index.json                      # root with L1 edges
 ├── <branch-1>/
 │   ├── index.json                  # branch with leaf edges
@@ -101,11 +101,11 @@ A `stub` branch is a feature: visitors see what you intend to cover, even when y
 
 ### 4. Wire the pack
 
-In `artifacts/emerald/src/llm/LLMProvider.tsx`, add your pack to `SEED_BUNDLES` with `useCatalog: true`. In `artifacts/emerald/src/components/ChatWidget.tsx`, route your persona to `useCatalog: { packSlug: "<your-pack>" }`.
+In `artifacts/greater/src/llm/LLMProvider.tsx`, add your pack to `SEED_BUNDLES` with `useCatalog: true`. In `artifacts/greater/src/components/ChatWidget.tsx`, route your persona to `useCatalog: { packSlug: "<your-pack>" }`.
 
 ### 5. Tune the anti-drift gate
 
-The Bitcoin pack ships shitcoin/scam/financial-advice regexes in `artifacts/emerald/src/llm/catalog/antiDrift.ts`. For other niches, edit those regexes to match your refusal categories. Deterministic regex beats LLM-based refusal — no chance the model talks itself into engaging with the off-topic question.
+The Bitcoin pack ships shitcoin/scam/financial-advice regexes in `artifacts/greater/src/llm/catalog/antiDrift.ts`. For other niches, edit those regexes to match your refusal categories. Deterministic regex beats LLM-based refusal — no chance the model talks itself into engaging with the off-topic question.
 
 ### 6. Write smoke tests
 
@@ -134,10 +134,10 @@ Greater also ships flat-embed packs for non-Bitcoin domains. Those are untouched
 
 ## Where things live
 
-- Catalog navigator: `artifacts/emerald/src/llm/catalog/navigator.ts`
-- Anti-drift gate: `artifacts/emerald/src/llm/catalog/antiDrift.ts`
-- Pack flag: `SeedBundleConfig.useCatalog` in `artifacts/emerald/src/llm/LLMProvider.tsx`
-- Per-doc JIT corpus: `artifacts/emerald/public/corpus/bitcoin/<slug>.json`
+- Catalog navigator: `artifacts/greater/src/llm/catalog/navigator.ts`
+- Anti-drift gate: `artifacts/greater/src/llm/catalog/antiDrift.ts`
+- Pack flag: `SeedBundleConfig.useCatalog` in `artifacts/greater/src/llm/LLMProvider.tsx`
+- Per-doc JIT corpus: `artifacts/greater/public/corpus/bitcoin/<slug>.json`
 - Smoke harness: `scripts/src/bitcoin-catalog-smoke.ts` + `scripts/src/bitcoin-conversation-smoke.ts`
 
 See `docs/CORPUS_EXPANSION.md` for the catalog architecture rationale, `docs/SOURCES.md` for licensing, and `docs/TESTING.md` for the full smoke-test reference.

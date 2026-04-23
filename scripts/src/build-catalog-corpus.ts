@@ -1,9 +1,9 @@
 /**
  * Catalog corpus emitter (Task #68 follow-up).
  *
- * Walks every leaf JSON under `artifacts/emerald/public/catalog/<pack>/`
+ * Walks every leaf JSON under `artifacts/greater/public/catalog/<pack>/`
  * and writes a per-source local copy to
- * `artifacts/emerald/public/corpus/<pack>/<slug>.json`, plus an
+ * `artifacts/greater/public/corpus/<pack>/<slug>.json`, plus an
  * `_index.json` mapping source URLs to slugs.
  *
  * Why this exists: the chat trace renders a "local copy" badge for every
@@ -29,7 +29,7 @@ import { mkdir, readFile, readdir, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { slugForSource } from "../../artifacts/emerald/src/llm/catalog/slug";
+import { slugForSource } from "../../artifacts/greater/src/llm/catalog/slug";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,14 +37,14 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const CATALOG_ROOT = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "catalog",
 );
 const CORPUS_ROOT = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "corpus",
 );

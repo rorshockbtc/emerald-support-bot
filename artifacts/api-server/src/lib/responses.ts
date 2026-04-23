@@ -199,7 +199,7 @@ Swaps on Liquid settle in approximately 2 minutes and benefit from Confidential 
     ],
   },
   general: {
-    reply: `Thanks for reaching out! I'm Emerald, Blockstream's support assistant.
+    reply: `Thanks for reaching out! I'm Greater, Blockstream's support assistant.
 
 I can help you with:
 - **Blockstream Green** — Wallet setup, recovery, transactions

@@ -52,31 +52,31 @@ export default function HowItWorks() {
           n="01"
           heading="Question lands in the browser"
           body="The visitor types into the chat widget. Nothing leaves the device on the default flow. The question is handed to a Web Worker that has loaded a small instruction-tuned model (Llama-3.2-1B-Instruct, q4f16) onto WebGPU."
-          file="artifacts/emerald/src/llm/llmWorker.ts"
+          file="artifacts/greater/src/llm/llmWorker.ts"
         />
         <Block
           n="02"
           heading="Retrieval pulls the relevant chunks"
           body="Before the model runs, the question is embedded with bge-small-en-v1.5 (also browser-local). The embedding is matched against the IndexedDB-backed vector store using cosine similarity. The top 4–8 chunks survive."
-          file="artifacts/emerald/src/llm/vectorStore.ts"
+          file="artifacts/greater/src/llm/vectorStore.ts"
         />
         <Block
           n="03"
           heading="The model writes an answer with citation markers"
           body="The retrieved chunks are inlined into a system prompt with explicit instructions to cite sources by index ([1], [2,3], etc.). The model streams tokens back; the widget renders them with the citation markers turned into clickable links to the original page."
-          file="artifacts/emerald/src/components/ChatWidget.tsx"
+          file="artifacts/greater/src/components/ChatWidget.tsx"
         />
         <Block
           n="04"
           heading="The thought trace stays inspectable"
           body="Every retrieved chunk is rendered behind a 'Thought trace' disclosure: the cosine similarity score, the source page, the verbatim chunk text. The visitor (or a curious developer) can see exactly what the model was given."
-          file="artifacts/emerald/src/components/ChatMessage.tsx"
+          file="artifacts/greater/src/components/ChatMessage.tsx"
         />
         <Block
           n="05"
           heading="Cloud fallback is honest, capped, and labelled"
           body="If WebGPU isn't available — Safari, mid-download, ancient hardware — the widget falls back to a server endpoint (Together.AI) for the first three turns of the session. Every cloud reply ships with a 'Cloud' badge instead of 'Local · Private'. After three calls, the session is local-only and says so."
-          file="artifacts/emerald/src/llm/LLMProvider.tsx"
+          file="artifacts/greater/src/llm/LLMProvider.tsx"
         />
         <Block
           n="06"

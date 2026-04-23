@@ -6,7 +6,7 @@ The Greater Bitcoin demo bot draws on a curated public-domain and open-licensed 
 
 Two of our largest source institutions — the **Mises Institute** and the **Satoshi Nakamoto Institute** — publish under open licenses precisely because they want curious readers to be sent back to the original material. Citing them well is not just a license requirement; it is an alignment of incentives. Every time the bot links to mises.org or nakamotoinstitute.org, those institutes get a referral and the visitor gets a primary source they can verify. That is the trust loop FOSS-grade RAG was built for.
 
-The bot is instructed in its system prompt to **always link out** to the canonical URL when it draws on Mises or Nakamoto material. This is enforced at the harness layer (`artifacts/emerald/src/data/harness/bitcoinCharter.ts`) and at the per-bias system prompt layer (`data/pipes/bitcoin-greater-v1.manifest.json`).
+The bot is instructed in its system prompt to **always link out** to the canonical URL when it draws on Mises or Nakamoto material. This is enforced at the harness layer (`artifacts/greater/src/data/harness/bitcoinCharter.ts`) and at the per-bias system prompt layer (`data/pipes/bitcoin-greater-v1.manifest.json`).
 
 ## Source 1 — Bitcoin OpTech newsletters
 
@@ -60,7 +60,7 @@ The bot is instructed in its system prompt to **always link out** to the canonic
 
 ## Catalog leaves (Bitcoin pack, April 2026)
 
-In addition to the long-form corpus chunks above, the Bitcoin pack now ships a **hand-curated catalog** at `artifacts/emerald/public/catalog/bitcoin/`. Each catalog leaf carries its own `sources[]` array — one entry per primary source, with `url` and `title`. These are structural citations: the navigator returns them with every answer, regardless of whether the cloud LLM ran.
+In addition to the long-form corpus chunks above, the Bitcoin pack now ships a **hand-curated catalog** at `artifacts/greater/public/catalog/bitcoin/`. Each catalog leaf carries its own `sources[]` array — one entry per primary source, with `url` and `title`. These are structural citations: the navigator returns them with every answer, regardless of whether the cloud LLM ran.
 
 The leaves cite the same six source institutions documented above (OpTech, bitcoin/bitcoin commits, bitcoinknots/bitcoin commits, BitcoinTalk, Mises Institute, Nakamoto Institute) plus direct primary sources like the BIPs repository. Citing a source from a leaf carries the same attribution obligation as citing it from a chunk — the canonical URL must be preserved.
 

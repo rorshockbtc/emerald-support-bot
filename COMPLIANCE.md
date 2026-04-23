@@ -41,7 +41,7 @@ If you find an over-claim, please open an issue at
 
 If your deployment cannot tolerate any cloud egress, set
 `CLOUD_CALL_BUDGET = 0` in
-`artifacts/emerald/src/llm/LLMProvider.tsx`. The widget will surface a
+`artifacts/greater/src/llm/LLMProvider.tsx`. The widget will surface a
 "WebGPU unsupported — please use a Chromium-based browser" message
 instead of falling back.
 
@@ -199,7 +199,7 @@ of any escalation that touches a customer account.
 
 Startups, faith, schools, and small-business demos open with a
 lighter, persona-appropriate disclaimer (see
-`artifacts/emerald/src/data/disclaimers.ts`). Each links back to
+`artifacts/greater/src/data/disclaimers.ts`). Each links back to
 this document via `/compliance`.
 
 ---

@@ -150,4 +150,4 @@ If the bot's behaviour does not match your harness:
 ---
 
 *File: `HARNESS_BEST_PRACTICES.md` — maintained alongside the harness
-feature in `artifacts/emerald/src/components/HarnessPanel.tsx`.*
+feature in `artifacts/greater/src/components/HarnessPanel.tsx`.*

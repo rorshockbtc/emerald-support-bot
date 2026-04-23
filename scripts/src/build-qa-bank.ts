@@ -1,7 +1,7 @@
 /**
  * Curated Q&A bank generator.
  *
- * Reads each persona's existing `artifacts/emerald/public/qa-bank/<slug>.json`,
+ * Reads each persona's existing `artifacts/greater/public/qa-bank/<slug>.json`,
  * uses an LLM (Together AI, OpenAI-compatible) to extend it up to the
  * target size (default 30), and writes the merged result back. Existing
  * items are preserved verbatim and act as voice/style exemplars for the
@@ -27,7 +27,7 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const QA_DIR = path.join(
   REPO_ROOT,
   "artifacts",
-  "emerald",
+  "greater",
   "public",
   "qa-bank",
 );
